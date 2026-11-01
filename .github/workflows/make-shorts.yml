@@ -1,0 +1,96 @@
+name: 쇼츠 만들기
+
+on:
+  workflow_dispatch:
+    inputs:
+      episode:
+        description: "에피소드 폴더 이름 (episodes/ 아래)"
+        required: true
+        default: ep01-artillery
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shorts-${{ inputs.episode }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      EP: ${{ inputs.episode }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      ELEVENLABS_VOICE_ID: ${{ vars.ELEVENLABS_VOICE_ID || 'ZJCNdZEjYwkOElxugmW2' }}
+      ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
+      TTS_SPEED: ${{ vars.TTS_SPEED }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 설치
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-noto-cjk > /dev/null
+          pip install -q requests pillow edge-tts
+          npm ci
+
+      # 위성·지형 타일은 한 번 받으면 캐시에 보관 (렌더 중 인터넷 타일 사용 안 함)
+      - name: 지도 타일 캐시
+        uses: actions/cache@v4
+        with:
+          path: public/tiles
+          key: tiles-v2-${{ hashFiles('pipeline/tiles.py') }}
+      - name: 위성·지형 타일 받기
+        run: python pipeline/tiles.py
+
+      # 같은 대본이면 TTS를 다시 사지 않도록 캐시
+      - name: 나레이션 캐시
+        uses: actions/cache@v4
+        with:
+          path: public/ep/${{ inputs.episode }}/tts
+          key: tts-${{ inputs.episode }}-${{ hashFiles(format('episodes/{0}/episode.json', inputs.episode)) }}
+      - name: 나레이션 + 자막 타임라인
+        run: python pipeline/prepare.py "$EP"
+
+      - name: 렌더링 (1080x1920 · 30fps · 60초)
+        run: |
+          npx remotion browser ensure
+          npx remotion render src/index.ts Short "out/$EP.mp4" \
+            --props="{\"ep\":\"$EP\"}" --gl=swangle --concurrency=4 \
+            --codec=h264 --crf=18 --x264-preset=veryfast --audio-bitrate=192k \
+            --timeout=120000 --log=info
+          # 쇼츠 권장 음량 (-14 LUFS), 영상은 그대로 복사
+          ffmpeg -y -v error -i "out/$EP.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 192k out/final.mp4
+          mv out/final.mp4 "out/$EP.mp4"
+          cp "public/ep/$EP/$EP.srt" out/
+          # 확인용 장면 컷 3장
+          for t in 3 20 45; do ffmpeg -y -v error -ss $t -i "out/$EP.mp4" -frames:v 1 -q:v 3 "out/${EP}_${t}s.jpg"; done
+
+      - name: 결과 요약
+        run: |
+          D=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "out/$EP.mp4")
+          ENGINE=$(python -c "import json;print(json.load(open('public/ep/$EP/timeline.json'))['engine'])")
+          {
+            echo "## ✅ $EP 렌더 완료"
+            echo "- 길이: ${D}초 · 해상도 1080x1920 · 30fps"
+            echo "- 나레이션 엔진: $ENGINE"
+            echo "- 다운로드: 아래 Artifacts의 **$EP-shorts** (3일 뒤 자동 삭제)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 결과물 올리기 (Artifacts · 3일 보관)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.episode }}-shorts
+          path: |
+            out/${{ inputs.episode }}.mp4
+            out/${{ inputs.episode }}.srt
+            out/*.jpg
+          retention-days: 3
