@@ -1,6 +1,6 @@
 import React from 'react';
 import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
-import {cueTime} from '../lib/schedule';
+import {cueTime, videoSec} from '../lib/schedule';
 import {COLORS, Episode, Stat, Timeline} from '../lib/types';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
@@ -54,7 +54,7 @@ export const TopStats: React.FC<{episode: Episode; timeline: Timeline}> = ({epis
       <div style={{position: 'absolute', top: 222, left: 28, right: 28, display: 'flex', gap: 22}}>
         {(p2Badge ? p2 : p1).map((s, i) => {
           const fallback = p2Badge ? t2 + 1.5 + i * 5 : 2.5 + i * 4;
-          const at = Math.min(cueTime(timeline, s.cue, fallback), p2Badge ? 59 : t2 - 0.5);
+          const at = Math.min(cueTime(timeline, s.cue, fallback), p2Badge ? videoSec(timeline) - 1 : t2 - 0.5);
           return <Card key={`${p2Badge ? 2 : 1}-${i}`} s={s} at={p2Badge ? Math.max(at, t2 + 0.2) : at} outAt={p2Badge ? 99 : t2 - 0.25} />;
         })}
       </div>

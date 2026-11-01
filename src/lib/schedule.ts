@@ -1,7 +1,11 @@
 import {CamKey, Episode, LngLat, Timeline} from './types';
 
 export const FPS = 30;
-export const TOTAL_SEC = 60;
+export const DEFAULT_SEC = 60;
+/** 영상 길이(초) = 나레이션 실제 길이 + 여운 (timeline.json) */
+export const videoSec = (tl: Timeline) => tl.videoSec ?? (tl.durationInFrames ? tl.durationInFrames / FPS : DEFAULT_SEC);
+/** 카메라 키프레임은 60초 기준(1단계 25초·2단계 35초)으로 작성 → 실제 구간 길이에 비율로 맞춤 */
+const NOMINAL = {phase1: 25, phase2: 35};
 
 // 결정적 난수 (렌더 탭마다 결과가 같아야 함)
 export const rand = (seed: number) => {
@@ -44,7 +48,8 @@ export type Plan = {
 const cache = new Map<string, Plan>();
 
 export const buildPlan = (ep: Episode, tl: Timeline): Plan => {
-  const key = ep.id + tl.phase2At + tl.duration;
+  const key = ep.id + tl.phase2At + tl.duration + videoSec(tl);
+  const T = videoSec(tl);
   const hit = cache.get(key);
   if (hit) return hit;
   const m = ep.map;
@@ -73,7 +78,7 @@ export const buildPlan = (ep: Episode, tl: Timeline): Plan => {
   const traceStart = Math.max(t2 + 2.2, cueTime(tl, '역추적', t2 + 3) - 1.2);
   const traceEnd = traceStart + 2.6;
   const counterStart = Math.min(cueTime(tl, 'K9', traceEnd + 0.5), traceEnd + 1.5);
-  const end = TOTAL_SEC - 3.5;
+  const end = T - 2.2;
   const destroyedAt = m.nkOrigins.map(() => Infinity);
   t = counterStart;
   n = 0;
@@ -94,7 +99,7 @@ export const buildPlan = (ep: Episode, tl: Timeline): Plan => {
   // 아직 안 맞은 원점도 마무리 일제 타격
   destroyedAt.forEach((d, i) => {
     if (d === Infinity) {
-      const lt = end - 3 + i * 0.1;
+      const lt = Math.max(counterStart, end - 3) + i * 0.1;
       const site = m.k9Sites[i % m.k9Sites.length];
       arcs.push({from: site.pos, to: m.nkOrigins[i], launch: lt, flight: 1.8, side: 'k9', originIdx: i});
       blasts.push({pos: m.nkOrigins[i], t: lt + 1.8, size: 1.5, side: 'rok'});
@@ -112,8 +117,11 @@ export const cameraAt = (sec: number, ep: Episode, tl: Timeline) => {
   const inP2 = sec >= t2;
   const keys = inP2 ? ep.map.camera.phase2 : ep.map.camera.phase1;
   const base = inP2 ? t2 : 0;
-  const len = inP2 ? TOTAL_SEC - t2 : t2;
-  const abs = keys.map((k) => ({...k, t: base + (k.t < 0 || Object.is(k.t, -0) ? len + k.t : k.t)})).sort((a, b) => a.t - b.t);
+  const len = inP2 ? videoSec(tl) - t2 : t2;
+  const r = len / (inP2 ? NOMINAL.phase2 : NOMINAL.phase1);
+  const abs = keys
+    .map((k) => ({...k, t: base + Math.min(len, Math.max(0, k.t < 0 || Object.is(k.t, -0) ? len + k.t * r : k.t * r))}))
+    .sort((a, b) => a.t - b.t);
   if (sec <= abs[0].t) return abs[0];
   for (let i = 0; i < abs.length - 1; i++) {
     const a = abs[i];
@@ -137,11 +145,19 @@ const lerpCam = (a: CamKey, b: CamKey, p: number): CamKey => ({
 /** 효과음 큐 (18종: 기존 17종 + 합성 레이더 비프) */
 export type Sfx = {file: string; at: number; volume: number; dur?: number};
 
+// 믹싱 (2026-11-01): 포격·폭발·레이더·whoosh는 기존 대비 30%, 나머지 효과음 50% — 나레이션(1.0)이 항상 위에
+const LOUD = new Set(['artillery.mp3', 'artillery_far.mp3', 'boom.mp3', 'hit.mp3', 'radar.mp3', 'whoosh.mp3']);
+export const SFX_GAIN_LOUD = 0.3;
+export const SFX_GAIN_OTHER = 0.5;
+
 export const buildSfx = (ep: Episode, tl: Timeline): Sfx[] => {
   const p = buildPlan(ep, tl);
+  const T = videoSec(tl);
   const out: Sfx[] = [];
   const add = (file: string, at: number, volume: number, dur?: number) => {
-    if (at >= 0 && at < TOTAL_SEC - 0.2) out.push({file, at, volume, dur});
+    if (at < 0 || at >= T - 0.3) return;
+    const d = dur ? Math.min(dur, T - at) : undefined;
+    out.push({file, at, volume: volume * (LOUD.has(file) ? SFX_GAIN_LOUD : SFX_GAIN_OTHER), dur: d});
   };
   // 오프닝: 바람 + 심장박동 + 먼 포성
   add('wind.mp3', 0, 0.18, p.t2);
@@ -166,9 +182,9 @@ export const buildSfx = (ep: Episode, tl: Timeline): Sfx[] => {
   add('drum.mp3', p.t2, 0.6);
   for (let i = 0; i < 7; i++) add('radar.mp3', p.radarStart + i * 0.55, 0.45);
   add('typewriter.mp3', p.traceStart, 0.25, 2.2);
-  add('tank.mp3', p.counterStart - 0.5, 0.25, TOTAL_SEC - p.counterStart);
-  for (let t = p.counterStart; t < TOTAL_SEC - 4; t += 1.1) add('artillery.mp3', t, 0.42);
-  for (let t = p.counterStart + 0.4; t < TOTAL_SEC - 4; t += 2.2) add('whoosh.mp3', t, 0.25);
+  add('tank.mp3', p.counterStart - 0.5, 0.25, T - p.counterStart);
+  for (let t = p.counterStart; t < T - 2.5; t += 1.1) add('artillery.mp3', t, 0.42);
+  for (let t = p.counterStart + 0.4; t < T - 2.5; t += 2.2) add('whoosh.mp3', t, 0.25);
   p.blasts.filter((b) => b.side === 'rok').forEach((b, i) => {
     if (i % 3 === 0) add(i % 6 === 0 ? 'boom.mp3' : 'hit.mp3', b.t, 0.36);
   });

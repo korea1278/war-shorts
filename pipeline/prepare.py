@@ -36,15 +36,20 @@ def duration(p):
     return float(sh("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(p)).strip())
 
 
+VOICE_SETTINGS = {
+    "stability": 0.38,          # 긴장감·전달력
+    "similarity_boost": 0.82,   # 빠른 딕션에서도 명확하게
+    "style": 0.12,
+    "use_speaker_boost": True,
+    "speed": 1.15,              # 1.15배 템포
+}
+
+
 def tts_elevenlabs(text, out_mp3, voice, prev_t, next_t):
     import requests
     key = os.environ["ELEVENLABS_API_KEY"]
     model = os.environ.get("ELEVENLABS_MODEL") or "eleven_multilingual_v2"
-    body = {
-        "text": text, "model_id": model,
-        "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.2,
-                           "use_speaker_boost": True, "speed": float(os.environ.get("TTS_SPEED") or 1.05)},
-    }
+    body = {"text": text, "model_id": model, "voice_settings": VOICE_SETTINGS}
     if prev_t:
         body["previous_text"] = prev_t
     if next_t:
@@ -59,7 +64,7 @@ def tts_elevenlabs(text, out_mp3, voice, prev_t, next_t):
             return
         print(f"  일레븐랩스 오류 {r.status_code}: {r.text[:200]}")
         if r.status_code in (401, 402, 403):
-            raise RuntimeError("일레븐랩스 인증/크레딧 오류")
+            raise RuntimeError(f"일레븐랩스 인증/크레딧 오류 {r.status_code}")
     raise RuntimeError("일레븐랩스 실패")
 
 
@@ -74,8 +79,8 @@ def tts_edge(text, out_mp3):
 
 def tts_mock(text, out_mp3):
     sec = max(1.0, len(text.replace(" ", "")) / 4.3)
-    sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=mono:d={sec:.2f}",
-       "-b:a", "96k", str(out_mp3))
+    sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"sine=frequency=220:sample_rate=44100:duration={sec:.2f}",
+       "-af", "volume=0.3", "-b:a", "96k", str(out_mp3))
 
 
 def split_chunks(text):
@@ -126,23 +131,29 @@ def main(ep, mock=False):
     shutil.copy(src, out / "episode.json")
 
     has_el = bool(os.environ.get("ELEVENLABS_API_KEY")) and not mock
-    voice = data.get("voice") or os.environ.get("ELEVENLABS_VOICE_ID") or "ZJCNdZEjYwkOElxugmW2"
+    voice = data.get("voice") or os.environ.get("ELEVENLABS_VOICE_ID") or "U1cJYS4EdbaHmfR7YzHd"
     engine = "mock" if mock else ("elevenlabs" if has_el else "edge")
-    print(f"TTS 엔진: {engine}")
+    # TTS_STRICT=1 이면 일레븐랩스가 아니면 중단 (다른 목소리로 몰래 바뀌는 것 방지)
+    strict = os.environ.get("TTS_STRICT") == "1" and not mock
+    if strict and engine != "elevenlabs":
+        sys.exit("❌ ELEVENLABS_API_KEY가 없습니다 — 저장소 Settings > Secrets > Actions에 등록하세요 (TTS_STRICT)")
+    print(f"TTS 엔진: {engine} · 목소리 {voice} · {VOICE_SETTINGS}")
 
     lines = data["script"]
     says = [l.get("say") or l["t"] for l in lines]
     parts = []
     for i, line in enumerate(lines):
         say = says[i]
-        sig = hashlib.sha1(json.dumps([engine, voice, say], ensure_ascii=False).encode()).hexdigest()[:10]
+        sig = hashlib.sha1(json.dumps([engine, voice, say, VOICE_SETTINGS], ensure_ascii=False).encode()).hexdigest()[:10]
         mp3 = tdir / f"s{i:02d}_{sig}.mp3"
         if not mp3.exists():
             print(f"  [{i}] {say}")
             if engine == "elevenlabs":
                 try:
                     tts_elevenlabs(say, mp3, voice, says[i - 1] if i else None, says[i + 1] if i + 1 < len(says) else None)
-                except Exception as e:  # 크레딧·키 문제면 무료 목소리로 계속
+                except Exception as e:  # 크레딧·키 문제
+                    if strict:
+                        sys.exit(f"❌ 일레븐랩스 실패: {e}")
                     print(f"  ⚠ {e} → edge-tts로 대체")
                     engine = "edge"
                     tts_edge(say, mp3)
@@ -152,8 +163,19 @@ def main(ep, mock=False):
                 tts_mock(say, mp3)
         parts.append(mp3)
 
+    # 문장별 앞뒤 무음 제거 (TTS가 붙이는 여백 → 쉼은 GAP으로만 통제)
+    trim = ("silenceremove=start_periods=1:start_silence=0.04:start_threshold=-45dB,areverse,"
+            "silenceremove=start_periods=1:start_silence=0.06:start_threshold=-45dB,areverse")
+    wavs = []
+    for i, p in enumerate(parts):
+        w = tdir / f"_{i:02d}.wav"
+        sh("ffmpeg", "-v", "error", "-y", "-i", str(p), "-af", trim, "-ar", "44100", "-ac", "1", str(w))
+        if duration(w) < 0.3:  # 잘라내기가 과하면 원본 사용
+            sh("ffmpeg", "-v", "error", "-y", "-i", str(p), "-ar", "44100", "-ac", "1", str(w))
+        wavs.append(w)
+
     # 문장별 길이 + 쉼 → 전체 이어 붙이기
-    durs = [duration(p) for p in parts]
+    durs = [duration(w) for w in wavs]
     gaps = [GAP_Q if l["t"].rstrip().endswith("?") else GAP for l in lines]
     total = LEAD + sum(durs) + sum(gaps[:-1])
     tempo = 1.0
@@ -162,12 +184,6 @@ def main(ep, mock=False):
         tempo = min(1.25, total / limit)
         print(f"  길이 {total:.1f}초 > {limit}초 → 속도 x{tempo:.3f}")
 
-    wavs = []
-    sil = tdir / "_gap.wav"
-    for i, p in enumerate(parts):
-        w = tdir / f"_{i:02d}.wav"
-        sh("ffmpeg", "-v", "error", "-y", "-i", str(p), "-ar", "44100", "-ac", "1", str(w))
-        wavs.append(w)
     lst = tdir / "_list.txt"
     with lst.open("w") as f:
         lead = tdir / "_lead.wav"
@@ -204,9 +220,17 @@ def main(ep, mock=False):
     # 문장 사이 쉼에도 직전 자막을 유지
     for a, b in zip(chunks, chunks[1:]):
         a["end"] = b["start"]
-    chunks[-1]["end"] = round(chunks[-1]["end"] + 0.8, 3)
+    chunks[-1]["end"] = round(chunks[-1]["end"] + 0.4, 3)
+    for c in chunks:
+        c["startFrame"] = round(c["start"] * 30)
+        c["endFrame"] = round(c["end"] * 30)
 
-    tl = {"engine": engine, "tempo": round(tempo, 4), "duration": round(t, 3),
+    audio_sec = duration(out / "narration.mp3")
+    tail = float(data.get("tailSec", 1.5))
+    frames = int(-(-(audio_sec + tail) * 30 // 1))   # 오디오 길이 + 여운 1.5초 → 총 프레임 (올림)
+    tl = {"engine": engine, "voice": voice if engine == "elevenlabs" else None, "tempo": round(tempo, 4),
+          "duration": round(t, 3), "audioSec": round(audio_sec, 3), "tailSec": tail,
+          "durationInFrames": frames, "videoSec": round(frames / 30, 3),
           "phase2At": round(phase2 if phase2 is not None else 26.0, 3),
           "sentences": sentences, "chunks": chunks}
     (out / "timeline.json").write_text(json.dumps(tl, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -219,6 +243,7 @@ def main(ep, mock=False):
 
     for f in tdir.glob("_*"):
         f.unlink()
+    print(f"영상 길이: {frames}프레임 = {frames / 30:.2f}초 (오디오 {audio_sec:.2f}초 + 여운 {tail}초)")
     print(f"완료: 나레이션 {t:.1f}초 · 전환 {tl['phase2At']}초 · 자막 {len(chunks)}개 · 엔진 {engine}")
 
 

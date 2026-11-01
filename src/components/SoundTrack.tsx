@@ -1,23 +1,42 @@
 import React from 'react';
 import {Audio, interpolate, Sequence, staticFile} from 'remotion';
-import {buildSfx, FPS, TOTAL_SEC} from '../lib/schedule';
+import {buildSfx, FPS, videoSec} from '../lib/schedule';
 import {Episode, Timeline} from '../lib/types';
+
+// 채널별 믹싱: 나레이션 1.0 고정, 말하는 동안 효과음·BGM을 자동으로 낮춤(덕킹)
+const NARRATION_VOL = 1.0;
+const BGM_VOL = 0.11;
+const DUCK = 0.5; // 말하는 동안 효과음·BGM 배율
 
 export const SoundTrack: React.FC<{ep: string; episode: Episode; timeline: Timeline}> = ({ep, episode, timeline}) => {
   const cues = buildSfx(episode, timeline);
-  const total = TOTAL_SEC * FPS;
+  const total = Math.round(videoSec(timeline) * FPS);
+  // 문장 구간(초) → 덕킹 곡선 (앞뒤 0.15초 완만하게)
+  const speech = timeline.sentences.map((s) => [s.start, s.end] as const);
+  const duck = (sec: number) => {
+    let d = 1;
+    for (const [a, b] of speech) {
+      const inside = interpolate(sec, [a - 0.15, a, b, b + 0.15], [0, 1, 1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+      d = Math.min(d, 1 - (1 - DUCK) * inside);
+    }
+    return d;
+  };
+  const outro = (frame: number) => interpolate(frame, [total - 40, total], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   return (
     <>
-      <Audio src={staticFile(`ep/${ep}/narration.mp3`)} volume={1} />
+      <Audio src={staticFile(`ep/${ep}/narration.mp3`)} volume={NARRATION_VOL} />
       <Audio src={staticFile('bgm/tension.mp3')} loop
-        volume={(f) => interpolate(f, [0, 20, total - 45, total], [0, 0.13, 0.13, 0], {extrapolateRight: 'clamp'})} />
+        volume={(f) => BGM_VOL * duck(f / FPS) * interpolate(f, [0, 20], [0, 1], {extrapolateRight: 'clamp'}) * outro(f)} />
       {cues.map((c, i) => {
         const from = Math.round(c.at * FPS);
-        const dur = c.dur ? Math.round(c.dur * FPS) : undefined;
+        const dur = Math.max(2, c.dur ? Math.round(c.dur * FPS) : total - from);
         return (
-          <Sequence key={i} from={from} durationInFrames={dur ?? total - from} layout="none">
+          <Sequence key={i} from={from} durationInFrames={dur} layout="none">
             <Audio src={staticFile(`sfx/${c.file}`)}
-              volume={(f) => (dur ? c.volume * interpolate(f, [0, 4, dur - 10, dur], [0, 1, 1, 0], {extrapolateRight: 'clamp'}) : c.volume)} />
+              volume={(f) => {
+                const env = c.dur ? Math.max(0, Math.min(1, f / 4, (dur - f) / 10)) : 1;
+                return c.volume * env * duck((from + f) / FPS) * outro(from + f);
+              }} />
           </Sequence>
         );
       })}

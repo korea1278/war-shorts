@@ -4,8 +4,9 @@
 답변은 한국어로 한다.
 
 ## 규격
-- 1080x1920 · 30fps · 60초(1800프레임) · 한국어 단일 버전
-- 나레이션 300자 안팎 = 약 50~55초. 57.5초를 넘으면 `prepare.py`가 자동으로 살짝 빠르게 맞춤
+- 1080x1920 · 30fps · 한국어 단일 버전
+- **영상 길이 = 나레이션 실제 길이 + 여운 1.5초** (2026-11-01, 고정 1800프레임 폐지). `prepare.py`가 `timeline.json`의 `durationInFrames`를 계산, `Root.tsx` calculateMetadata가 사용. 카메라 키프레임은 60초 기준으로 쓰고 실제 길이에 비율로 자동 맞춤
+- 나레이션이 57.5초를 넘으면 `prepare.py`가 자동으로 살짝 빠르게 맞춤
 - 화면 3단: 상단 인포그래픽(Y 0~480, `src/components/TopStats.tsx`) / 중앙 지도(Y 384~1440, `MapCanvas.tsx` + `MapOverlay.tsx`, Canvas 2D) / 하단 자막(Y 1440~1920, `Subtitles.tsx`)
 - 색: 북한 `#ff2828`, 한국 `#0066ff`, 강조 노랑 `#FFD000`, 폰트 Pretendard Black
 
@@ -20,7 +21,9 @@
 
 ## 파이프라인
 - `pipeline/tiles.py`: Esri 위성 타일을 받아 모자이크 2장(z8 배경·z11 상세, 색 보정 포함)으로 합침 → `public/tiles/mosaic_*.jpg` + `mosaic.json` (캐시)
-- `pipeline/prepare.py`: TTS(일레븐랩스 `ELEVENLABS_API_KEY` 있으면 목소리 ZJCNdZEjYwkOElxugmW2, 없거나 실패하면 edge-tts ko-KR-InJoonNeural) + 자막 타임라인 + SRT
+- `pipeline/prepare.py`: TTS + 자막 타임라인 + SRT. **일레븐랩스 Minho `U1cJYS4EdbaHmfR7YzHd`**, eleven_multilingual_v2, stability 0.38 · similarity 0.82 · style 0.12 · speed 1.15 · speaker boost. Actions는 `TTS_STRICT=1` → 키가 없거나 실패하면 다른 목소리로 바꾸지 않고 중단. 문장별 앞뒤 무음은 잘라내고 쉼은 0.22초(물음표 뒤 0.38초)
+- `scripts/validate_audio_sync.py`: 렌더 직전 검증(ffmpeg silencedetect + faster-whisper tiny) — 끝 무음 2초 이상, 영상-오디오 길이 차 0~2초 밖, 마지막 자막 끝 vs 음성 끝 ±1초, Whisper 단어 대조(마지막 단어 ±1.2초, 커버리지 90%, 문장 시작 중앙값 0.8초) 실패 시 렌더 중단. 렌더 후 `--video`로 MP4 길이 재확인
+- 믹싱: 나레이션 1.0, 포격·폭발·레이더·whoosh는 기존의 30%, 나머지 효과음 50%, BGM 0.11, 말하는 동안 효과음·BGM 50%로 덕킹 (`SoundTrack.tsx`)
 - 효과음: `public/sfx` 17종(war-docu와 같은 음원) + 합성 레이더 비프 `radar.mp3`, 큐는 `src/lib/schedule.ts`의 `buildSfx`
 - BGM: `public/bgm/tension.mp3` 고정 재사용 (음악 API 호출 금지)
 - **렌더 속도 원칙 (2026-11-01)**: MapLibre(WebGL)는 GPU 없는 러너에서 소프트웨어로 돌아 프레임당 1초 이상 → 제거.

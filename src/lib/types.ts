@@ -27,11 +27,14 @@ export type Episode = {
   };
 };
 
-export type Chunk = {start: number; end: number; text: string; sentence: number};
+export type Chunk = {start: number; end: number; text: string; sentence: number; startFrame?: number; endFrame?: number};
 
 export type Timeline = {
   engine: string;
   duration: number;
+  audioSec?: number;
+  durationInFrames?: number; // 오디오 길이 + 여운 1.5초 (prepare.py가 계산)
+  videoSec?: number;
   phase2At: number;
   sentences: {i: number; start: number; end: number; text: string}[];
   chunks: Chunk[];

@@ -22,7 +22,8 @@ jobs:
     env:
       EP: ${{ inputs.episode }}
       ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-      ELEVENLABS_VOICE_ID: ${{ vars.ELEVENLABS_VOICE_ID || 'ZJCNdZEjYwkOElxugmW2' }}
+      ELEVENLABS_VOICE_ID: ${{ vars.ELEVENLABS_VOICE_ID || 'U1cJYS4EdbaHmfR7YzHd' }}
+      TTS_STRICT: "1"   # 일레븐랩스(Minho)가 아니면 중단 — 다른 목소리로 몰래 바뀌지 않게
       ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
       TTS_SPEED: ${{ vars.TTS_SPEED }}
     steps:
@@ -39,7 +40,7 @@ jobs:
       - name: 설치
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-noto-cjk > /dev/null
-          pip install -q requests pillow edge-tts
+          pip install -q requests pillow edge-tts faster-whisper
           npm ci
 
       # 위성·지형 타일은 한 번 받으면 캐시에 보관 (렌더 중 인터넷 타일 사용 안 함)
@@ -56,11 +57,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: public/ep/${{ inputs.episode }}/tts
-          key: tts-${{ inputs.episode }}-${{ hashFiles(format('episodes/{0}/episode.json', inputs.episode)) }}
+          key: tts-${{ inputs.episode }}-${{ hashFiles(format('episodes/{0}/episode.json', inputs.episode), 'pipeline/prepare.py') }}
       - name: 나레이션 + 자막 타임라인
         run: python pipeline/prepare.py "$EP"
 
-      - name: 렌더링 (1080x1920 · 30fps · 60초)
+      - name: Whisper tiny 모델 캐시
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-tiny-v1
+
+      # 렌더 전 검증: 끝 무음 2초 이상·영상/오디오 길이 차 2초 초과·자막 끝≠음성 끝이면 여기서 중단
+      - name: 오디오 공백·자막 싱크 검증 (ffmpeg silencedetect + faster-whisper)
+        run: python scripts/validate_audio_sync.py "$EP" --require-whisper
+
+      - name: 렌더링 (1080x1920 · 30fps · 길이 = 나레이션 + 1.5초)
         run: |
           npx remotion browser ensure
           START=$(date +%s)
@@ -74,8 +85,10 @@ jobs:
           ffmpeg -y -v error -i "out/$EP.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 192k out/final.mp4
           mv out/final.mp4 "out/$EP.mp4"
           cp "public/ep/$EP/$EP.srt" out/
+          # 렌더 후 검증: MP4 길이가 예정 길이와 같은지
+          python scripts/validate_audio_sync.py "$EP" --video "out/$EP.mp4"
           # 확인용 장면 컷 3장
-          for t in 3 20 45; do ffmpeg -y -v error -ss $t -i "out/$EP.mp4" -frames:v 1 -q:v 3 "out/${EP}_${t}s.jpg"; done
+          for t in 3 15 30; do ffmpeg -y -v error -ss $t -i "out/$EP.mp4" -frames:v 1 -q:v 3 "out/${EP}_${t}s.jpg"; done
 
       - name: 결과 요약
         run: |
@@ -83,7 +96,7 @@ jobs:
           ENGINE=$(python -c "import json;print(json.load(open('public/ep/$EP/timeline.json'))['engine'])")
           {
             echo "## ✅ $EP 렌더 완료"
-            echo "- 길이: ${D}초 · 해상도 1080x1920 · 30fps"
+            echo "- 길이: ${D}초 (나레이션 + 여운 1.5초) · 해상도 1080x1920 · 30fps"
             echo "- 나레이션 엔진: $ENGINE"
             echo "- 렌더 시간: ${RENDER_SEC}초"
             echo "- 다운로드: 아래 Artifacts의 **$EP-shorts** (3일 뒤 자동 삭제)"
@@ -97,4 +110,5 @@ jobs:
             out/${{ inputs.episode }}.mp4
             out/${{ inputs.episode }}.srt
             out/*.jpg
+            out/validate_*.md
           retention-days: 3
