@@ -7,7 +7,7 @@ import {COLORS, Episode, LngLat} from '../lib/types';
 type P = (ll: LngLat) => [number, number];
 type C = CanvasRenderingContext2D;
 
-const geoCircle = (c: LngLat, km: number, n = 40, a0 = 0, a1 = 360): LngLat[] => {
+export const geoCircle = (c: LngLat, km: number, n = 40, a0 = 0, a1 = 360): LngLat[] => {
   const out: LngLat[] = [];
   const dLat = km / 111;
   const dLng = km / (111 * Math.cos((c[1] * Math.PI) / 180));
@@ -18,7 +18,7 @@ const geoCircle = (c: LngLat, km: number, n = 40, a0 = 0, a1 = 360): LngLat[] =>
   return out;
 };
 
-const path = (ctx: C, pts: [number, number][], close = false) => {
+export const path = (ctx: C, pts: [number, number][], close = false) => {
   ctx.beginPath();
   pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
   if (close) ctx.closePath();
@@ -42,7 +42,7 @@ export const glowStroke = (ctx: C, color: string, core: number, coreColor = colo
   ctx.globalAlpha = 1;
 };
 
-const circle = (ctx: C, x: number, y: number, r: number, fill: string | CanvasGradient, alpha = 1) => {
+export const circle = (ctx: C, x: number, y: number, r: number, fill: string | CanvasGradient, alpha = 1) => {
   if (r <= 0 || alpha <= 0) return;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = fill;
@@ -52,14 +52,14 @@ const circle = (ctx: C, x: number, y: number, r: number, fill: string | CanvasGr
   ctx.globalAlpha = 1;
 };
 
-const radial = (ctx: C, x: number, y: number, r: number, stops: [number, string][]) => {
+export const radial = (ctx: C, x: number, y: number, r: number, stops: [number, string][]) => {
   const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, r));
   stops.forEach(([o, c]) => g.addColorStop(o, c));
   return g;
 };
-const FLASH: [number, string][] = [[0, 'rgba(255,248,224,1)'], [0.35, 'rgba(255,179,64,0.9)'], [1, 'rgba(255,61,0,0)']];
-const FLASH2: [number, string][] = [[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,207,106,0.95)'], [1, 'rgba(255,42,0,0)']];
-const EMBER: [number, string][] = [[0, 'rgba(255,210,122,0.95)'], [1, 'rgba(255,69,0,0)']];
+export const FLASH: [number, string][] = [[0, 'rgba(255,248,224,1)'], [0.35, 'rgba(255,179,64,0.9)'], [1, 'rgba(255,61,0,0)']];
+export const FLASH2: [number, string][] = [[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,207,106,0.95)'], [1, 'rgba(255,42,0,0)']];
+export const EMBER: [number, string][] = [[0, 'rgba(255,210,122,0.95)'], [1, 'rgba(255,69,0,0)']];
 
 const arcColor = (a: Arc) => (a.side === 'nk' ? COLORS.nk : a.side === 'chunmoo' ? COLORS.chunmoo : COLORS.rokLight);
 
@@ -74,7 +74,7 @@ const arcPoints = (a: Arc, A: [number, number], B: [number, number], p0: number,
   return pts;
 };
 
-const label = (ctx: C, x: number, y: number, text: string, size: number, color = '#fff') => {
+export const label = (ctx: C, x: number, y: number, text: string, size: number, color = '#fff') => {
   ctx.font = `900 ${size}px Pretendard`;
   const w = ctx.measureText(text).width + 26;
   const h = size + 18;
@@ -93,7 +93,7 @@ const label = (ctx: C, x: number, y: number, text: string, size: number, color =
   ctx.fillText(text, x, y + 4);
 };
 
-export const drawOverlay = (ctx: C, sec: number, episode: Episode, plan: Plan, project: P) => {
+export const drawArtillery = (ctx: C, sec: number, episode: Episode, plan: Plan, project: P) => {
   const m = episode.map;
   const p2 = sec >= plan.t2;
   const inView = ([x, y]: [number, number]) => x > -200 && x < MAP_W + 200 && y > -300 && y < MAP_H + 200;

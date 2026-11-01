@@ -9,6 +9,9 @@
 - 나레이션이 57.5초를 넘으면 `prepare.py`가 자동으로 살짝 빠르게 맞춤
 - 화면 3단: 상단 인포그래픽(Y 0~480, `src/components/TopStats.tsx`) / 중앙 지도(Y 384~1440, `MapCanvas.tsx` + `MapOverlay.tsx`, Canvas 2D) / 하단 자막(Y 1440~1920, `Subtitles.tsx`)
 - 색: 북한 `#ff2828`, 한국 `#0066ff`, 강조 노랑 `#FFD000`, 폰트 Pretendard Black
+- **상단 표준 (EP02~, 모든 에피소드)**: 0초부터 뱃지 `[ ● 가상 군사 시뮬레이션 IF ]`(빨간 원은 CSS로 그림 — 서버에 이모지 글꼴 없음), 타이틀 2줄 64px(길면 자동 축소)·3px 검정 외곽선·블러 없는 진한 그림자. 카드 전에는 타이틀을 아래로 내려 빈 공간 없앰 → 첫 카드 등장 때 위로. `stats.vs: true`면 카드 사이 VS
+- 시나리오: `scenario`가 `"armor"`면 기갑전(`src/lib/armor.ts` + `ArmorOverlay.tsx`: 축선 화살표·전차 무리 → K2 2.5km 링·레이저 조준·120mm 사격·야간 화면·교환비 문구), 없으면 포격전(EP01). 지명 라벨 `phase` 0=항상, 1=1단계만, 2=2단계만
+- 상세 위성: `map.mosaicDefs {"이름": [줌, [서,남,동,북]]}` + `map.mosaics: ["이름"]` → 근접 장면용 고해상도 모자이크(EP02 문산 z14)
 
 ## 새 에피소드 만드는 법
 1. `episodes/<epNN-이름>/episode.json` 작성 (형식은 `episodes/ep01-artillery/episode.json`)
@@ -23,7 +26,7 @@
 - `pipeline/tiles.py`: Esri 위성 타일을 받아 모자이크 2장(z8 배경·z11 상세, 색 보정 포함)으로 합침 → `public/tiles/mosaic_*.jpg` + `mosaic.json` (캐시)
 - `pipeline/prepare.py`: TTS + 자막 타임라인 + SRT. **일레븐랩스 Minho `U1cJYS4EdbaHmfR7YzHd`**, eleven_multilingual_v2, stability 0.38 · similarity 0.82 · style 0.12 · speed 1.15 · speaker boost. Actions는 `TTS_STRICT=1` → 키가 없거나 실패하면 다른 목소리로 바꾸지 않고 중단. 문장별 앞뒤 무음은 잘라내고 쉼은 0.22초(물음표 뒤 0.38초)
 - `scripts/validate_audio_sync.py`: 렌더 직전 검증(ffmpeg silencedetect + faster-whisper tiny) — 끝 무음 2초 이상, 영상-오디오 길이 차 0~2초 밖, 마지막 자막 끝 vs 음성 끝 ±1초, Whisper 단어 대조(마지막 단어 ±1.2초, 커버리지 90%, 문장 시작 중앙값 0.8초) 실패 시 렌더 중단. 렌더 후 `--video`로 MP4 길이 재확인
-- 믹싱: 나레이션 1.0, 포격·폭발·레이더·whoosh는 기존의 30%, 나머지 효과음 50%, BGM 0.11, 말하는 동안 효과음·BGM 50%로 덕킹 (`SoundTrack.tsx`)
+- 믹싱: 나레이션 1.0, 효과음 전부 기존의 30%, BGM 0.11, 말하는 동안 효과음·BGM 50%로 덕킹 (`SoundTrack.tsx`)
 - 효과음: `public/sfx` 17종(war-docu와 같은 음원) + 합성 레이더 비프 `radar.mp3`, 큐는 `src/lib/schedule.ts`의 `buildSfx`
 - BGM: `public/bgm/tension.mp3` 고정 재사용 (음악 API 호출 금지)
 - **렌더 속도 원칙 (2026-11-01)**: MapLibre(WebGL)는 GPU 없는 러너에서 소프트웨어로 돌아 프레임당 1초 이상 → 제거.

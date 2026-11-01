@@ -145,10 +145,10 @@ const lerpCam = (a: CamKey, b: CamKey, p: number): CamKey => ({
 /** 효과음 큐 (18종: 기존 17종 + 합성 레이더 비프) */
 export type Sfx = {file: string; at: number; volume: number; dur?: number};
 
-// 믹싱 (2026-11-01): 포격·폭발·레이더·whoosh는 기존 대비 30%, 나머지 효과음 50% — 나레이션(1.0)이 항상 위에
+// 믹싱 (2026-11-01): 모든 효과음 기존 대비 30% — 나레이션(1.0)이 항상 위에
 const LOUD = new Set(['artillery.mp3', 'artillery_far.mp3', 'boom.mp3', 'hit.mp3', 'radar.mp3', 'whoosh.mp3']);
 export const SFX_GAIN_LOUD = 0.3;
-export const SFX_GAIN_OTHER = 0.5;
+export const SFX_GAIN_OTHER = 0.3; // EP02부터: 전체 효과음 30%
 
 export const buildSfx = (ep: Episode, tl: Timeline): Sfx[] => {
   const p = buildPlan(ep, tl);

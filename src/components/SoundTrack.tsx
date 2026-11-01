@@ -1,5 +1,6 @@
 import React from 'react';
 import {Audio, interpolate, Sequence, staticFile} from 'remotion';
+import {buildArmorSfx} from '../lib/armor';
 import {buildSfx, FPS, videoSec} from '../lib/schedule';
 import {Episode, Timeline} from '../lib/types';
 
@@ -9,7 +10,7 @@ const BGM_VOL = 0.11;
 const DUCK = 0.5; // 말하는 동안 효과음·BGM 배율
 
 export const SoundTrack: React.FC<{ep: string; episode: Episode; timeline: Timeline}> = ({ep, episode, timeline}) => {
-  const cues = buildSfx(episode, timeline);
+  const cues = episode.scenario === 'armor' ? buildArmorSfx(episode, timeline) : buildSfx(episode, timeline);
   const total = Math.round(videoSec(timeline) * FPS);
   // 문장 구간(초) → 덕킹 곡선 (앞뒤 0.15초 완만하게)
   const speech = timeline.sentences.map((s) => [s.start, s.end] as const);

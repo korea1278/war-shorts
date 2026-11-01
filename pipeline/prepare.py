@@ -78,7 +78,7 @@ def tts_edge(text, out_mp3):
 
 
 def tts_mock(text, out_mp3):
-    sec = max(1.0, len(text.replace(" ", "")) / 4.3)
+    sec = max(1.0, len(text.replace(" ", "")) / float(os.environ.get("MOCK_CPS") or 4.3))
     sh("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"sine=frequency=220:sample_rate=44100:duration={sec:.2f}",
        "-af", "volume=0.3", "-b:a", "96k", str(out_mp3))
 

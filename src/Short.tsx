@@ -32,7 +32,7 @@ export const Short: React.FC<ShortProps> = ({ep, offline = false, episode, timel
       {/* 상단 인포그래픽: Y 0 ~ 480 */}
       <TopStats episode={episode} timeline={timeline} />
       {/* 하단 자막: Y 1440 ~ 1920 */}
-      <Subtitles timeline={timeline} />
+      <Subtitles timeline={timeline} episode={episode} />
       <SoundTrack ep={ep} episode={episode} timeline={timeline} />
     </AbsoluteFill>
   );

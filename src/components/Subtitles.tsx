@@ -1,16 +1,19 @@
 import React from 'react';
 import {interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
-import {COLORS, Timeline} from '../lib/types';
+import {COLORS, Episode, Timeline} from '../lib/types';
 
-// 숫자·핵심 무기명은 노란색 강조
-const HL = /([\d][\d,]*[^\s,.?]*|K9|천무|장사정포|대포병 탐지레이더)/g;
+// 숫자·핵심 무기명은 노란색 강조 (단어 목록은 episode.json highlight)
+const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const makeHL = (words: string[]) =>
+  new RegExp(`(${[...words.map(esc), '[A-Z]?-?\\d[\\d,.]*[^\\s,.?]*'].join('|')})`, 'g');
 
-const renderText = (text: string) => {
+const renderText = (text: string, HL: RegExp) => {
   const parts = text.split(HL);
   return parts.map((p, i) => (i % 2 === 1 ? <span key={i} style={{color: COLORS.yellow}}>{p}</span> : <span key={i}>{p}</span>));
 };
 
-export const Subtitles: React.FC<{timeline: Timeline}> = ({timeline}) => {
+export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({timeline, episode}) => {
+  const HL = makeHL(episode.highlight ?? ['K9', '천무', '장사정포', '대포병 탐지레이더']);
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const sec = frame / fps;
@@ -27,7 +30,7 @@ export const Subtitles: React.FC<{timeline: Timeline}> = ({timeline}) => {
               fontSize: 84, lineHeight: 1.22, fontWeight: 900, color: '#fff', textAlign: 'center',
               wordBreak: 'keep-all', whiteSpace: 'pre-wrap', WebkitTextStroke: '12px #000', paintOrder: 'stroke fill',
             }}>
-              {renderText(c.text)}
+              {renderText(c.text, HL)}
             </div>
           </div>
         );

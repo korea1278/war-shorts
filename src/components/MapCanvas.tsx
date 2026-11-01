@@ -6,7 +6,9 @@ import {continueRender, delayRender, staticFile, useCurrentFrame} from 'remotion
 import {drawGround, makeCam, MAP_H, MAP_W, Mosaic, projectLL, projectW, toWorld} from '../lib/camera';
 import {buildPlan, cameraAt, FPS} from '../lib/schedule';
 import {COLORS, Episode, Timeline} from '../lib/types';
-import {drawOverlay, glowStroke} from './MapOverlay';
+import {buildArmorPlan} from '../lib/armor';
+import {drawArmor} from './ArmorOverlay';
+import {drawArtillery, glowStroke} from './MapOverlay';
 
 type Assets = {layers: Mosaic[]; borders: {iso: string; rings: Float64Array[]}[]};
 
@@ -20,7 +22,7 @@ const loadImg = (src: string) =>
     im.src = src;
   });
 
-const loadAssets = (offline: boolean): Promise<Assets> => {
+const loadAssets = (offline: boolean, extra: string[]): Promise<Assets> => {
   if (assetsPromise) return assetsPromise;
   assetsPromise = (async () => {
     // 캔버스 글자용 폰트를 먼저 확실히 로드
@@ -47,7 +49,7 @@ const loadAssets = (offline: boolean): Promise<Assets> => {
     if (!offline) {
       const meta = await fetch(staticFile('tiles/mosaic.json')).then((r) => r.json());
       layers = await Promise.all(
-        ['back', 'detail'].map(async (k) => {
+        ['back', 'detail', ...extra].filter((k) => meta[k]).map(async (k) => {
           const m = meta[k];
           const img = await loadImg(staticFile(m.file));
           await img.decode();
@@ -71,7 +73,7 @@ export const MapCanvas: React.FC<{episode: Episode; timeline: Timeline; offline:
   const released = useRef(false);
 
   useLayoutEffect(() => {
-    loadAssets(offline)
+    loadAssets(offline, episode.map.mosaics ?? [])
       .then((a) => setAssets(a))
       .catch((e) => {
         console.warn(e);
@@ -112,7 +114,9 @@ export const MapCanvas: React.FC<{episode: Episode; timeline: Timeline; offline:
       glowStroke(ctx, col, 3.2, iso === 'PRK' ? '#ffb4b4' : '#b8d4ff', pulse);
     }
 
-    drawOverlay(ctx, sec, episode, buildPlan(episode, timeline), (ll) => projectLL(cam, ll));
+    const pp = (ll: [number, number]) => projectLL(cam, ll);
+    if (episode.scenario === 'armor') drawArmor(ctx, sec, episode, buildArmorPlan(episode, timeline), pp);
+    else drawArtillery(ctx, sec, episode, buildPlan(episode, timeline), pp);
     if (!released.current) {
       released.current = true;
       continueRender(handle);

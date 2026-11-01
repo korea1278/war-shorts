@@ -23,6 +23,11 @@ MOSAICS = {
     "back": (8, (123.5, 35.0, 131.0, 41.8)),
     "detail": (11, (125.9, 37.0, 128.2, 39.05)),
 }
+# 에피소드 전용 상세 모자이크: episode.json의 map.mosaicDefs {"이름": [줌, [서,남,동,북]]}
+for _ep in sorted((ROOT / "episodes").glob("*/episode.json")):
+    for _name, (_z, _bbox) in json.loads(_ep.read_text(encoding="utf-8")).get("map", {}).get("mosaicDefs", {}).items():
+        MOSAICS[_name] = (_z, tuple(_bbox))
+
 SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
 
