@@ -4,6 +4,7 @@ import {MapCanvas} from './components/MapCanvas';
 import {SoundTrack} from './components/SoundTrack';
 import {Subtitles} from './components/Subtitles';
 import {TopStats} from './components/TopStats';
+import {CtaOverlay} from './components/CtaOverlay';
 import {ShortProps} from './lib/types';
 
 const fontCss = `@font-face{font-family:'Pretendard';src:url('${staticFile('fonts/Pretendard-Black.woff2')}') format('woff2');font-weight:100 900;font-display:block;}`;
@@ -33,6 +34,8 @@ export const Short: React.FC<ShortProps> = ({ep, offline = false, episode, timel
       <TopStats episode={episode} timeline={timeline} />
       {/* 하단 자막: Y 1440 ~ 1920 */}
       <Subtitles timeline={timeline} episode={episode} />
+      {/* 끝 4초: 구독·좋아요 CTA (자막 위) */}
+      <CtaOverlay episode={episode} timeline={timeline} />
       <SoundTrack ep={ep} episode={episode} timeline={timeline} />
     </AbsoluteFill>
   );

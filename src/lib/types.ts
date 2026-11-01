@@ -5,7 +5,8 @@ export type Stat = {
   prefix: string;
   value: number;
   suffix: string;
-  side: 'nk' | 'rok';
+  side: 'nk' | 'rok' | 'gray';
+  numPrefix?: string; // 숫자 앞 단위 (예: "마하" 10)
   cue?: string; // 이 글자가 들어간 자막이 나올 때 카드 등장
   decimals?: number; // 소수점 자리 (예: 2.5km)
   note?: string; // 숫자 아래 작은 설명 (예: "(야간 불가)")
@@ -22,18 +23,35 @@ export type ArmorMap = {
   ratioText?: string;
 };
 
+/** 탄도미사일 정밀 타격 시나리오 (EP03~) */
+export type MissileMap = {
+  launcher: LngLat; // 아군 발사대
+  launcherLabel?: string;
+  target: LngLat; // 주 표적(지휘부 벙커)
+  targetLabel?: string;
+  bunkers: LngLat[]; // 주변 지하 벙커 (매몰 연출)
+  apexKm?: number; // 정점 고도 (km, 연출용)
+  maxMach?: number; // 낙하 최대 속도
+  impactCue?: string; // 이 자막에서 지표면 충돌
+  buryCue?: string; // 이 자막에서 심도 폭발·매몰
+  buryText?: string; // 매몰 순간 큰 문구
+  depthM?: number; // 관통 깊이 게이지 최대값 (m)
+};
+
 export type CamKey = {t: number; center: LngLat; zoom: number; pitch: number; bearing: number};
 
 export type Episode = {
   id: string;
   title: [string, string];
   script: {t: string; say?: string; phase2?: boolean}[];
-  scenario?: 'artillery' | 'armor';
+  scenario?: 'artillery' | 'armor' | 'missile';
+  cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
   highlight?: string[]; // 자막 노랑 강조 단어 (숫자는 자동)
-  stats: {phase1: Stat[]; phase2: Stat[]; vs?: boolean};
+  stats: {phase1: Stat[]; phase2: Stat[]; vs?: boolean; vsPhase2?: boolean};
   map: {
     mosaics?: string[]; // 추가 상세 위성 모자이크 이름 (pipeline/tiles.py)
     armor?: ArmorMap;
+    missile?: MissileMap;
     nkOrigins: LngLat[];
     targets: LngLat[];
     seoul: LngLat;
@@ -69,6 +87,7 @@ export const COLORS = {
   rok: '#0066ff',
   rokLight: '#4da3ff',
   chunmoo: '#00e5ff',
+  gray: '#8a96a3',
   yellow: '#FFD000',
   fire: '#ff8a1f',
 };

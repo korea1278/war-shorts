@@ -9,6 +9,8 @@ import {COLORS, Episode, Timeline} from '../lib/types';
 import {buildArmorPlan} from '../lib/armor';
 import {drawArmor} from './ArmorOverlay';
 import {drawArtillery, glowStroke} from './MapOverlay';
+import {buildMissilePlan, shakeAt} from '../lib/missile';
+import {drawMissile} from './MissileOverlay';
 
 type Assets = {layers: Mosaic[]; borders: {iso: string; rings: Float64Array[]}[]};
 
@@ -116,6 +118,7 @@ export const MapCanvas: React.FC<{episode: Episode; timeline: Timeline; offline:
 
     const pp = (ll: [number, number]) => projectLL(cam, ll);
     if (episode.scenario === 'armor') drawArmor(ctx, sec, episode, buildArmorPlan(episode, timeline), pp);
+    else if (episode.scenario === 'missile') drawMissile(ctx, sec, episode, buildMissilePlan(episode, timeline), pp);
     else drawArtillery(ctx, sec, episode, buildPlan(episode, timeline), pp);
     if (!released.current) {
       released.current = true;
@@ -123,9 +126,13 @@ export const MapCanvas: React.FC<{episode: Episode; timeline: Timeline; offline:
     }
   }, [assets, frame]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 지진 진동: 캔버스 요소만 transform 이동 (필터 없음, 비용 0) — 가장자리가 비지 않게 살짝 확대
+  const [sx, sy] = episode.scenario === 'missile' ? shakeAt(buildMissilePlan(episode, timeline), sec) : [0, 0];
+  const shaking = sx !== 0 || sy !== 0;
   return (
     <div style={{position: 'absolute', inset: 0, width: MAP_W, height: MAP_H}}>
-      <canvas ref={canvas} width={MAP_W} height={MAP_H} style={{position: 'absolute', inset: 0}} />
+      <canvas ref={canvas} width={MAP_W} height={MAP_H}
+        style={{position: 'absolute', inset: 0, transform: shaking ? `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) scale(1.06)` : undefined}} />
       {!offline && (
         <div style={{position: 'absolute', right: 14, bottom: 96, fontSize: 16, color: 'rgba(255,255,255,0.55)', fontFamily: 'Pretendard'}}>
           위성영상 © Esri

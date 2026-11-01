@@ -22,7 +22,7 @@ const Card: React.FC<{s: Stat; at: number; outAt: number}> = ({s, at, outAt}) =>
   const out = interpolate(sec, [outAt, outAt + 0.35], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const cnt = interpolate(sec, [at + 0.1, at + 1.15], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const eased = 1 - Math.pow(1 - cnt, 3);
-  const col = s.side === 'nk' ? COLORS.nk : COLORS.rok;
+  const col = s.side === 'nk' ? COLORS.nk : s.side === 'gray' ? COLORS.gray : COLORS.rok;
   const bump = 1 + 0.06 * Math.max(0, Math.sin(Math.min(1, (sec - at - 1.1) / 0.3) * Math.PI));
   const numSize = s.note ? 76 : 88;
   return (
@@ -47,6 +47,7 @@ const Card: React.FC<{s: Stat; at: number; outAt: number}> = ({s, at, outAt}) =>
       </div>
       <div style={{fontSize: 34, color: '#dfe6ee', fontWeight: 900, marginTop: 6, whiteSpace: 'nowrap'}}>{s.prefix.trim()}</div>
       <div style={{display: 'flex', alignItems: 'baseline', transform: `scale(${bump})`, marginTop: -4}}>
+        {s.numPrefix && <span style={{fontSize: numSize * 0.52, fontWeight: 900, color: COLORS.yellow, marginRight: 10}}>{s.numPrefix}</span>}
         <span style={{fontSize: numSize, fontWeight: 900, color: '#fff', fontVariantNumeric: 'tabular-nums', letterSpacing: -2}}>
           {fmt(s.value * eased, s.decimals)}
         </span>
@@ -105,7 +106,7 @@ export const TopStats: React.FC<{episode: Episode; timeline: Timeline}> = ({epis
       <div style={{position: 'absolute', top: CARD_TOP, left: 28, right: 28, display: 'flex', gap: 22, alignItems: 'center'}}>
         {(p2On ? p2 : p1).map((s, i) => (
           <React.Fragment key={`${p2On ? 2 : 1}-${i}`}>
-            {i === 1 && episode.stats.vs && sec >= timing((p2On ? p2 : p1)[0], 0, p2On) && <div style={{fontSize: 40, fontWeight: 900, color: COLORS.yellow, ...stroke}}>VS</div>}
+            {i === 1 && (p2On ? episode.stats.vsPhase2 ?? episode.stats.vs : episode.stats.vs) && sec >= timing((p2On ? p2 : p1)[0], 0, p2On) && <div style={{fontSize: 40, fontWeight: 900, color: COLORS.yellow, ...stroke}}>VS</div>}
             <Card s={s} at={timing(s, i, p2On)} outAt={p2On ? 999 : t2 - 0.25} />
           </React.Fragment>
         ))}
