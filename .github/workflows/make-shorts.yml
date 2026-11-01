@@ -7,6 +7,10 @@ on:
         description: "에피소드 폴더 이름 (episodes/ 아래)"
         required: true
         default: ep01-artillery
+      test_voice:
+        description: "점검용: 일레븐랩스 키 없이 무료 목소리로 파이프라인만 시험 (업로드용 아님)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,7 +27,7 @@ jobs:
       EP: ${{ inputs.episode }}
       ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
       ELEVENLABS_VOICE_ID: ${{ vars.ELEVENLABS_VOICE_ID || 'U1cJYS4EdbaHmfR7YzHd' }}
-      TTS_STRICT: "1"   # 일레븐랩스(Minho)가 아니면 중단 — 다른 목소리로 몰래 바뀌지 않게
+      TTS_STRICT: ${{ inputs.test_voice && '0' || '1' }}   # 기본: 일레븐랩스(Minho)가 아니면 중단
       ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
       TTS_SPEED: ${{ vars.TTS_SPEED }}
     steps:
