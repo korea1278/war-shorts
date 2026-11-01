@@ -6,7 +6,7 @@
 ## 규격
 - 1080x1920 · 30fps · 60초(1800프레임) · 한국어 단일 버전
 - 나레이션 300자 안팎 = 약 50~55초. 57.5초를 넘으면 `prepare.py`가 자동으로 살짝 빠르게 맞춤
-- 화면 3단: 상단 인포그래픽(Y 0~480, `src/components/TopStats.tsx`) / 중앙 지도(Y 384~1440, `MapCanvas.tsx` + `MapOverlay.tsx`) / 하단 자막(Y 1440~1920, `Subtitles.tsx`)
+- 화면 3단: 상단 인포그래픽(Y 0~480, `src/components/TopStats.tsx`) / 중앙 지도(Y 384~1440, `MapCanvas.tsx` + `MapOverlay.tsx`, Canvas 2D) / 하단 자막(Y 1440~1920, `Subtitles.tsx`)
 - 색: 북한 `#ff2828`, 한국 `#0066ff`, 강조 노랑 `#FFD000`, 폰트 Pretendard Black
 
 ## 새 에피소드 만드는 법
@@ -19,11 +19,15 @@
 3. 결과 MP4·SRT·확인용 컷은 Artifacts(3일 보관)
 
 ## 파이프라인
-- `pipeline/tiles.py`: Esri 위성 타일을 미리 받아 `public/tiles`(캐시) — 렌더 중 인터넷 타일 안 씀
+- `pipeline/tiles.py`: Esri 위성 타일을 받아 모자이크 2장(z8 배경·z11 상세, 색 보정 포함)으로 합침 → `public/tiles/mosaic_*.jpg` + `mosaic.json` (캐시)
 - `pipeline/prepare.py`: TTS(일레븐랩스 `ELEVENLABS_API_KEY` 있으면 목소리 ZJCNdZEjYwkOElxugmW2, 없거나 실패하면 edge-tts ko-KR-InJoonNeural) + 자막 타임라인 + SRT
 - 효과음: `public/sfx` 17종(war-docu와 같은 음원) + 합성 레이더 비프 `radar.mp3`, 큐는 `src/lib/schedule.ts`의 `buildSfx`
 - BGM: `public/bgm/tension.mp3` 고정 재사용 (음악 API 호출 금지)
-- 렌더: `--gl=swangle`(GPU 없는 러너에서 WebGL), 지도 캔버스만 pixelRatio 0.75(속도), SVG 블러 필터 금지(프레임당 1초 이상 느려짐)
+- **렌더 속도 원칙 (2026-11-01)**: MapLibre(WebGL)는 GPU 없는 러너에서 소프트웨어로 돌아 프레임당 1초 이상 → 제거.
+  지도는 `src/lib/camera.ts`의 경량 카메라(메르카토르+원근 틸트+회전, MapLibre와 같은 zoom/pitch/bearing)로
+  모자이크를 가로 띠마다 아핀 변환해 Canvas 2D `drawImage` (1080x1056, 배율 1). 국경·탄도·폭발도 같은 캔버스에 그림
+- 금지: CSS `filter`/`drop-shadow`/`blur`, SVG filter, 블러 있는 `box-shadow`·`text-shadow` (발광은 굵은 반투명 선 3단 겹치기)
+- 렌더 옵션: `--gl=swiftshader --concurrency=2` (`--disable-dev-shm-usage`는 Remotion 기본값). 로컬 2코어 실측 120프레임 19초(시작 포함)
 
 ## 로컬 점검 (세션 안에서)
 ```

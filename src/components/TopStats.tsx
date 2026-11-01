@@ -19,7 +19,7 @@ const Card: React.FC<{s: Stat; at: number; outAt: number}> = ({s, at, outAt}) =>
   return (
     <div style={{
       flex: 1, height: 236, borderRadius: 22, background: 'rgba(8,12,18,0.88)', border: `4px solid ${col}`,
-      boxShadow: `0 0 36px ${col}aa, inset 0 0 40px ${col}33`, transform: `scale(${(0.6 + 0.4 * sc) * out})`, opacity: Math.min(1, sc * 1.4) * out,
+      boxShadow: `0 0 0 3px ${col}55, 0 0 0 7px ${col}22`, // 블러 없는 2중 외곽선 발광 transform: `scale(${(0.6 + 0.4 * sc) * out})`, opacity: Math.min(1, sc * 1.4) * out,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', overflow: 'hidden',
     }}>
       <div style={{width: '100%', background: col, color: '#fff', fontSize: 36, fontWeight: 900, textAlign: 'center', padding: '6px 0 8px', letterSpacing: 1}}>
@@ -27,7 +27,7 @@ const Card: React.FC<{s: Stat; at: number; outAt: number}> = ({s, at, outAt}) =>
       </div>
       <div style={{fontSize: 36, color: '#dfe6ee', fontWeight: 900, marginTop: 10}}>{s.prefix.trim()}</div>
       <div style={{display: 'flex', alignItems: 'baseline', transform: `scale(${bump})`, marginTop: -2}}>
-        <span style={{fontSize: 100, fontWeight: 900, color: s.side === 'nk' ? '#fff' : '#fff', textShadow: `0 0 22px ${col}`, fontVariantNumeric: 'tabular-nums', letterSpacing: -2}}>
+        <span style={{fontSize: 100, fontWeight: 900, color: s.side === 'nk' ? '#fff' : '#fff', fontVariantNumeric: 'tabular-nums', letterSpacing: -2}}>
           {fmt(s.value * eased)}
         </span>
         <span style={{fontSize: 52, fontWeight: 900, color: COLORS.yellow, marginLeft: 6}}>{s.suffix}</span>

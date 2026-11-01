@@ -47,8 +47,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: public/tiles
-          key: tiles-v2-${{ hashFiles('pipeline/tiles.py') }}
-      - name: 위성·지형 타일 받기
+          key: tiles-v3-${{ hashFiles('pipeline/tiles.py') }}
+      - name: 위성 타일 받기 + 모자이크 2장 만들기
         run: python pipeline/tiles.py
 
       # 같은 대본이면 TTS를 다시 사지 않도록 캐시
@@ -63,10 +63,13 @@ jobs:
       - name: 렌더링 (1080x1920 · 30fps · 60초)
         run: |
           npx remotion browser ensure
+          START=$(date +%s)
+          # 지도는 Canvas 2D(CPU) 렌더 → WebGL 불필요. --disable-dev-shm-usage는 Remotion이 기본으로 붙임
           npx remotion render src/index.ts Short "out/$EP.mp4" \
-            --props="{\"ep\":\"$EP\"}" --gl=swangle --concurrency=4 \
+            --props="{\"ep\":\"$EP\"}" --gl=swiftshader --concurrency=2 \
             --codec=h264 --crf=18 --x264-preset=veryfast --audio-bitrate=192k \
             --timeout=120000 --log=info
+          echo "RENDER_SEC=$(( $(date +%s) - START ))" >> "$GITHUB_ENV"
           # 쇼츠 권장 음량 (-14 LUFS), 영상은 그대로 복사
           ffmpeg -y -v error -i "out/$EP.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 192k out/final.mp4
           mv out/final.mp4 "out/$EP.mp4"
@@ -82,6 +85,7 @@ jobs:
             echo "## ✅ $EP 렌더 완료"
             echo "- 길이: ${D}초 · 해상도 1080x1920 · 30fps"
             echo "- 나레이션 엔진: $ENGINE"
+            echo "- 렌더 시간: ${RENDER_SEC}초"
             echo "- 다운로드: 아래 Artifacts의 **$EP-shorts** (3일 뒤 자동 삭제)"
           } >> "$GITHUB_STEP_SUMMARY"
 

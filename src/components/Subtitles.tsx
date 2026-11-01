@@ -26,7 +26,6 @@ export const Subtitles: React.FC<{timeline: Timeline}> = ({timeline}) => {
               transform: `scale(${0.92 + 0.08 * k})`, opacity: 0.4 + 0.6 * k,
               fontSize: 84, lineHeight: 1.22, fontWeight: 900, color: '#fff', textAlign: 'center',
               wordBreak: 'keep-all', whiteSpace: 'pre-wrap', WebkitTextStroke: '12px #000', paintOrder: 'stroke fill',
-              textShadow: '0 6px 18px rgba(0,0,0,0.8)',
             }}>
               {renderText(c.text)}
             </div>

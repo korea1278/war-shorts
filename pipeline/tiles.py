@@ -1,9 +1,15 @@
-"""위성 영상(Esri World Imagery) 타일을 미리 받아 public/tiles 에 저장.
+"""위성 영상(Esri World Imagery) 타일을 받아 '모자이크 이미지 2장'으로 미리 합친다.
 
-렌더 중에는 인터넷 타일을 쓰지 않고 이 로컬 타일만 쓴다 → 프레임마다 결과가 같고, 타일 서버 지연으로 멈추지 않음.
+렌더 중에는 WebGL·인터넷 타일을 전혀 쓰지 않고, 이 두 장을 Canvas 2D로 원근 변환해서 그린다.
+  public/tiles/mosaic_back.jpg   : z8 넓은 배경 (먼 지평선용, 저해상도)
+  public/tiles/mosaic_detail.jpg : z11 수도권~휴전선 상세
+  public/tiles/mosaic.json       : 각 이미지의 줌·원점(월드 픽셀)
+색 보정(채도↓·대비↑·밝기↓)도 여기서 한 번만 적용 → 렌더 중 필터 비용 0
+
 python pipeline/tiles.py            (이미 받은 타일은 건너뜀)
 python pipeline/tiles.py --fake     (로컬 점검용 가짜 타일)
 """
+import json
 import math
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -12,53 +18,52 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "public" / "tiles"
 
-# (zoom 범위, bbox[서,남,동,북])
-SAT_PLAN = [((5, 9), (123.5, 35.0, 131.0, 41.5)),
-            ((10, 11), (124.8, 36.2, 129.2, 40.6)),
-            ((12, 12), (126.2, 37.25, 127.75, 38.6))]
-DEM_PLAN = [((5, 8), (123.5, 35.0, 131.0, 41.5)),
-            ((9, 10), (124.8, 36.2, 129.2, 40.6))]
-
+# 이름: (줌, bbox[서,남,동,북])
+MOSAICS = {
+    "back": (8, (123.5, 35.0, 131.0, 41.8)),
+    "detail": (11, (125.9, 37.0, 128.2, 39.05)),
+}
 SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-DEM_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
 
-def tile_range(z, bbox):
+def tx(lon, z):
+    return int((lon + 180) / 360 * 2 ** z)
+
+
+def ty(lat, z):
+    r = math.radians(lat)
+    return int((1 - math.log(math.tan(r) + 1 / math.cos(r)) / math.pi) / 2 * 2 ** z)
+
+
+def tile_ranges(z, bbox):
     w, s, e, n = bbox
-    def tx(lon):
-        return int((lon + 180) / 360 * 2 ** z)
-    def ty(lat):
-        r = math.radians(lat)
-        return int((1 - math.log(math.tan(r) + 1 / math.cos(r)) / math.pi) / 2 * 2 ** z)
-    for x in range(tx(w), tx(e) + 1):
-        for y in range(ty(n), ty(s) + 1):
-            yield x, y
+    return range(tx(w, z), tx(e, z) + 1), range(ty(n, z), ty(s, z) + 1)
 
 
-def jobs(plan, kind, ext):
-    for (z0, z1), bbox in plan:
-        for z in range(z0, z1 + 1):
-            for x, y in tile_range(z, bbox):
-                yield kind, z, x, y, OUT / kind / str(z) / str(x) / f"{y}.{ext}"
+def tile_path(z, x, y):
+    return OUT / "sat" / str(z) / str(x) / f"{y}.jpg"
 
 
-def main(fake=False):
+def download(fake):
     import requests
     s = requests.Session()
     s.headers["User-Agent"] = "war-shorts-renderer/1.0 (+https://github.com/korea1278/war-shorts)"
-    todo = [j for j in list(jobs(SAT_PLAN, "sat", "jpg")) if not j[4].exists()]
+    todo = []
+    for z, bbox in MOSAICS.values():
+        xs, ys = tile_ranges(z, bbox)
+        todo += [(z, x, y) for x in xs for y in ys if not tile_path(z, x, y).exists()]
     print(f"받을 타일 {len(todo)}개")
     fails = [0]
 
     def get(j):
-        kind, z, x, y, p = j
+        z, x, y = j
+        p = tile_path(z, x, y)
         p.parent.mkdir(parents=True, exist_ok=True)
         if fake:
-            return fake_tile(kind, z, x, y, p)
-        url = (SAT_URL if kind == "sat" else DEM_URL).format(z=z, x=x, y=y)
+            return fake_tile(z, x, y, p)
         for _ in range(3):
             try:
-                r = s.get(url, timeout=30)
+                r = s.get(SAT_URL.format(z=z, x=x, y=y), timeout=30)
                 if r.status_code == 200 and len(r.content) > 100:
                     p.write_bytes(r.content)
                     return
@@ -68,20 +73,46 @@ def main(fake=False):
 
     with ThreadPoolExecutor(8) as ex:
         list(ex.map(get, todo))
-    print(f"완료 (실패 {fails[0]}개)")
+    print(f"다운로드 완료 (실패 {fails[0]}개)")
 
 
-def fake_tile(kind, z, x, y, p):
-    from PIL import Image
+def build():
+    from PIL import Image, ImageEnhance
+    meta = {}
+    for name, (z, bbox) in MOSAICS.items():
+        xs, ys = tile_ranges(z, bbox)
+        img = Image.new("RGB", (len(xs) * 256, len(ys) * 256), (11, 16, 22))
+        for i, x in enumerate(xs):
+            for j, y in enumerate(ys):
+                p = tile_path(z, x, y)
+                if p.exists():
+                    try:
+                        img.paste(Image.open(p).convert("RGB").resize((256, 256)), (i * 256, j * 256))
+                    except Exception:
+                        pass
+        img = ImageEnhance.Color(img).enhance(0.62)
+        img = ImageEnhance.Contrast(img).enhance(1.18)
+        img = ImageEnhance.Brightness(img).enhance(0.78)
+        f = f"mosaic_{name}.jpg"
+        img.save(OUT / f, quality=86, optimize=True)
+        meta[name] = {"file": f"tiles/{f}", "z": z, "x0": xs.start * 256, "y0": ys.start * 256, "w": img.width, "h": img.height}
+        print(f"{f}: {img.width}x{img.height}")
+    (OUT / "mosaic.json").write_text(json.dumps(meta, indent=1))
+
+
+def fake_tile(z, x, y, p):
+    from PIL import Image, ImageDraw
     import random
     random.seed(z * 100000 + x * 1000 + y)
-    if kind == "sat":
-        img = Image.new("RGB", (256, 256), (40 + random.randint(0, 30), 60 + random.randint(0, 30), 40))
-        img.save(p, quality=70)
-    else:
-        img = Image.new("RGB", (256, 256), (128, random.randint(0, 40), 0))
-        img.save(p)
+    img = Image.new("RGB", (256, 256), (50 + random.randint(0, 40), 70 + random.randint(0, 40), 45))
+    d = ImageDraw.Draw(img)
+    for _ in range(12):
+        x0, y0 = random.randint(0, 255), random.randint(0, 255)
+        d.ellipse((x0, y0, x0 + 30, y0 + 20), fill=(90, 100, 70))
+    img.save(p, quality=70)
 
 
 if __name__ == "__main__":
-    main(fake="--fake" in sys.argv)
+    OUT.mkdir(parents=True, exist_ok=True)
+    download(fake="--fake" in sys.argv)
+    build()
