@@ -5,6 +5,7 @@
 import React from 'react';
 import {interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {cueTime, videoSec} from '../lib/schedule';
+import {resultStartFrame} from '../lib/result';
 import {COLORS, Episode, Stat, Timeline} from '../lib/types';
 
 const fmt = (n: number, dec = 0) =>
@@ -49,7 +50,7 @@ const Card: React.FC<{s: Stat; at: number; outAt: number}> = ({s, at, outAt}) =>
       <div style={{display: 'flex', alignItems: 'baseline', transform: `scale(${bump})`, marginTop: -4}}>
         {s.numPrefix && <span style={{fontSize: numSize * 0.52, fontWeight: 900, color: COLORS.yellow, marginRight: 10}}>{s.numPrefix}</span>}
         <span style={{fontSize: numSize, fontWeight: 900, color: '#fff', fontVariantNumeric: 'tabular-nums', letterSpacing: -2}}>
-          {fmt(s.value * eased, s.decimals)}
+          {s.valueText ?? fmt(s.value * eased, s.decimals)}
         </span>
         <span style={{fontSize: numSize * 0.52, fontWeight: 900, color: COLORS.yellow, marginLeft: 6}}>{s.suffix}</span>
       </div>
@@ -58,22 +59,28 @@ const Card: React.FC<{s: Stat; at: number; outAt: number}> = ({s, at, outAt}) =>
   );
 };
 
-const Badge: React.FC = () => (
-  <div style={{position: 'absolute', top: 24, width: '100%', display: 'flex', justifyContent: 'center'}}>
+const Badge: React.FC<{safe?: boolean}> = ({safe}) => {
+  // safe 레이아웃(EP04~): Y 130 · 24px · 네온 레드 #FF3B30
+  const red = safe ? '#FF3B30' : '#ff2828';
+  const fs = safe ? 24 : 34;
+  const dot = safe ? 18 : 26;
+  return (
+  <div style={{position: 'absolute', top: safe ? 130 : 24, width: '100%', display: 'flex', justifyContent: 'center'}}>
     <div
       style={{
-        display: 'flex', alignItems: 'center', gap: 14, padding: '8px 26px 10px', borderRadius: 999,
-        background: 'rgba(0,0,0,0.85)', border: '3px solid #ff2828', fontSize: 34, fontWeight: 900, color: '#fff',
+        display: 'flex', alignItems: 'center', gap: safe ? 10 : 14, padding: safe ? '5px 20px 7px' : '8px 26px 10px', borderRadius: 999,
+        background: 'rgba(0,0,0,0.85)', border: `3px solid ${red}`, fontSize: fs, fontWeight: 900, color: '#fff',
       }}
     >
-      <span style={{color: '#ff2828'}}>[</span>
+      <span style={{color: red}}>[</span>
       {/* 이모지 글꼴이 없는 서버에서도 똑같이 보이도록 빨간 원을 직접 그림 */}
-      <span style={{width: 26, height: 26, borderRadius: 13, background: '#ff2828', border: '3px solid #ffb3b3', display: 'inline-block'}} />
+      <span style={{width: dot, height: dot, borderRadius: dot / 2, background: red, border: '3px solid #ffb3b3', display: 'inline-block'}} />
       <span>가상 군사 시뮬레이션 IF</span>
-      <span style={{color: '#ff2828'}}>]</span>
+      <span style={{color: red}}>]</span>
     </div>
   </div>
-);
+  );
+};
 
 export const TopStats: React.FC<{episode: Episode; timeline: Timeline}> = ({episode, timeline}) => {
   const t2 = timeline.phase2At;
@@ -91,19 +98,26 @@ export const TopStats: React.FC<{episode: Episode; timeline: Timeline}> = ({epis
   const firstCard = Math.min(...p1.map((s, i) => timing(s, i, false)));
   // 카드 전에는 타이틀을 아래(빈 공간 가운데)로, 카드가 나오면 위로
   const lift = spring({frame: frame - (firstCard - 0.35) * 30, fps: 30, config: {damping: 16, stiffness: 120}});
-  const titleY = interpolate(lift, [0, 1], [176, 92]);
+  const safe = episode.layout === 'safe';
+  // safe 레이아웃: 타이틀 Y 180 고정(120~350 안), 카드는 지도 상단 위(Y 352~)
+  const titleY = safe ? 180 : interpolate(lift, [0, 1], [176, 92]);
+  const cardTop = safe ? 352 : CARD_TOP;
+  // 결과 카드 진입(총 프레임-120)부터 스탯 박스만 부드럽게 opacity 0
+  const statsOut = episode.result ? interpolate(frame, [resultStartFrame(timeline), resultStartFrame(timeline) + 8], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}) : 1;
   const titleIn = interpolate(sec, [0, 0.3], [0, 1], {extrapolateRight: 'clamp'});
   const stroke = {WebkitTextStroke: '3px #000', paintOrder: 'stroke fill', textShadow: '4px 4px 0 #000, 0 5px 0 #000'} as const;
-  const size = (t: string) => Math.min(64, Math.floor(1010 / (t.length * 0.93)));
+  const size = (t: string) => Math.min(safe ? 60 : 64, Math.floor(1010 / (t.length * 0.93)));
   return (
     <div style={{position: 'absolute', left: 0, top: 0, width: 1080, height: 480}}>
-      <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(#05070a 0%, #05070a 72%, rgba(5,7,10,0) 100%)'}} />
-      <Badge />
+      <div style={{position: 'absolute', inset: 0, background: safe
+        ? 'linear-gradient(#05070a 0%, #05070a 68%, rgba(5,7,10,0) 80%)'
+        : 'linear-gradient(#05070a 0%, #05070a 72%, rgba(5,7,10,0) 100%)'}} />
+      <Badge safe={safe} />
       <div style={{position: 'absolute', top: titleY, width: '100%', textAlign: 'center', opacity: titleIn, lineHeight: 1.18}}>
         <div style={{fontSize: size(episode.title[0]), fontWeight: 900, color: '#fff', whiteSpace: 'nowrap', ...stroke}}>{episode.title[0]}</div>
         <div style={{fontSize: size(episode.title[1]), fontWeight: 900, color: COLORS.yellow, whiteSpace: 'nowrap', ...stroke}}>{episode.title[1]}</div>
       </div>
-      <div style={{position: 'absolute', top: CARD_TOP, left: 28, right: 28, display: 'flex', gap: 22, alignItems: 'center'}}>
+      <div style={{position: 'absolute', top: cardTop, left: 28, right: 28, display: 'flex', gap: 22, alignItems: 'center', opacity: statsOut}}>
         {(p2On ? p2 : p1).map((s, i) => (
           <React.Fragment key={`${p2On ? 2 : 1}-${i}`}>
             {i === 1 && (p2On ? episode.stats.vsPhase2 ?? episode.stats.vs : episode.stats.vs) && sec >= timing((p2On ? p2 : p1)[0], 0, p2On) && <div style={{fontSize: 40, fontWeight: 900, color: COLORS.yellow, ...stroke}}>VS</div>}

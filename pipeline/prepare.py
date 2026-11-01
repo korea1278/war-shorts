@@ -14,6 +14,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -227,7 +228,7 @@ def main(ep, mock=False):
 
     audio_sec = duration(out / "narration.mp3")
     tail = float(data.get("tailSec", 1.5))
-    frames = int(-(-(audio_sec + tail) * 30 // 1))   # 오디오 길이 + 여운 1.5초 → 총 프레임 (올림)
+    frames = math.ceil(audio_sec * 30) + round(tail * 30)   # Math.ceil(audioDuration*30) + 45 (여운 1.5초 뒤 칼종료)
     tl = {"engine": engine, "voice": voice if engine == "elevenlabs" else None, "tempo": round(tempo, 4),
           "duration": round(t, 3), "audioSec": round(audio_sec, 3), "tailSec": tail,
           "durationInFrames": frames, "videoSec": round(frames / 30, 3),

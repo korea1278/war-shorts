@@ -12,6 +12,7 @@ python scripts/validate_audio_sync.py ep01-artillery --video out/ep01-artillery.
 import argparse
 import difflib
 import json
+import math
 import os
 import re
 import subprocess
@@ -114,6 +115,13 @@ def main():
     first_start = chunks[0]["start"]
     R.info("TTS 엔진", f"{tl.get('engine')} · 목소리 {tl.get('voice') or '-'} · 속도 보정 x{tl.get('tempo')}")
     R.info("길이", f"오디오 {audio:.2f}초 · 영상 {frames}프레임({video_sec:.2f}초) · 자막 {len(chunks)}개")
+
+    # 자막 단일 활성화: 프레임 구간 [startFrame, endFrame) 이 서로 겹치지 않아야 함
+    fr = [(c.get("startFrame", round(c["start"] * FPS)), c.get("endFrame", round(c["end"] * FPS))) for c in chunks]
+    overlap = [i for i in range(len(fr) - 1) if fr[i][1] > fr[i + 1][0]]
+    R.check("자막 중복 노출 없음", not overlap, f"겹침 {len(overlap)}곳" if overlap else f"{len(fr)}개 모두 단일 활성")
+    exp = math.ceil(audio * FPS) + round(float(tl.get("tailSec", 1.5)) * FPS)
+    R.check("영상 프레임 = ceil(오디오×30)+45", frames is None or abs(frames - exp) <= 1, f"{frames} / 기대 {exp}")
 
     if a.video:
         v = ffprobe_dur(a.video, "v:0") or ffprobe_dur(a.video)

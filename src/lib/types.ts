@@ -10,6 +10,30 @@ export type Stat = {
   cue?: string; // 이 글자가 들어간 자막이 나올 때 카드 등장
   decimals?: number; // 소수점 자리 (예: 2.5km)
   note?: string; // 숫자 아래 작은 설명 (예: "(야간 불가)")
+  valueText?: string; // 숫자 대신 고정 글자 (예: "20~30") — 카운트업 없이 표시
+};
+
+/** 공중전 시나리오 (EP04~) */
+export type AirMap = {
+  routes: LngLat[][]; // 북한 편대 남하 경로 (1단계 붉은 궤적·화살표)
+  jetsPerRoute?: number; // 경로당 전투기 수 (연출용)
+  kf21: LngLat[]; // 아군 KF-21·F-35A 편대 위치
+  kf21Label?: string;
+  radarKm?: number; // AESA 탐지 거리 (부채꼴 반경)
+  radarBearing?: number; // 부채꼴 중심 방위 (도, 북=0)
+  radarSpread?: number; // 부채꼴 각도 (도)
+  nkRadarKm?: number; // 북한기 교전 거리 (작은 붉은 원)
+  radarCue?: string; // 이 자막에서 AESA 빔 방사
+  lockCue?: string; // 이 자막에서 표적 포착 박스
+  fireCue?: string; // 이 자막에서 미티어 발사
+  killCue?: string; // 이 자막에서 연속 공중 폭발 마무리
+};
+
+/** 끝 4초 결과 카드 */
+export type ResultData = {
+  label: string;
+  title: string;
+  rows: {k: string; v: string}[];
 };
 
 /** 기갑전 시나리오 */
@@ -44,7 +68,9 @@ export type Episode = {
   id: string;
   title: [string, string];
   script: {t: string; say?: string; phase2?: boolean}[];
-  scenario?: 'artillery' | 'armor' | 'missile';
+  scenario?: 'artillery' | 'armor' | 'missile' | 'air';
+  layout?: 'safe'; // EP04~: 모바일 Safe Area 규격 (상단 120~350·자막 1550~1720·우측 150px 마진)
+  result?: ResultData; // 있으면 끝 4초 결과 카드 + 스탯 페이드아웃 + 지도 80% 딤
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
   highlight?: string[]; // 자막 노랑 강조 단어 (숫자는 자동)
   stats: {phase1: Stat[]; phase2: Stat[]; vs?: boolean; vsPhase2?: boolean};
@@ -52,6 +78,7 @@ export type Episode = {
     mosaics?: string[]; // 추가 상세 위성 모자이크 이름 (pipeline/tiles.py)
     armor?: ArmorMap;
     missile?: MissileMap;
+    air?: AirMap;
     nkOrigins: LngLat[];
     targets: LngLat[];
     seoul: LngLat;

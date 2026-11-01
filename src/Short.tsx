@@ -5,6 +5,7 @@ import {SoundTrack} from './components/SoundTrack';
 import {Subtitles} from './components/Subtitles';
 import {TopStats} from './components/TopStats';
 import {CtaOverlay} from './components/CtaOverlay';
+import {MapDim, ResultCard} from './components/ResultCard';
 import {ShortProps} from './lib/types';
 
 const fontCss = `@font-face{font-family:'Pretendard';src:url('${staticFile('fonts/Pretendard-Black.woff2')}') format('woff2');font-weight:100 900;font-display:block;}`;
@@ -29,11 +30,15 @@ export const Short: React.FC<ShortProps> = ({ep, offline = false, episode, timel
       {/* 중앙 지도: Y 384 ~ 1440 */}
       <div style={{position: 'absolute', left: 0, top: 384, width: 1080, height: 1056, overflow: 'hidden'}}>
         <MapCanvas episode={episode} timeline={timeline} offline={offline} />
+        {/* 끝 4초: 지도 80% 블랙 딤 */}
+        <MapDim episode={episode} timeline={timeline} />
       </div>
       {/* 상단 인포그래픽: Y 0 ~ 480 */}
       <TopStats episode={episode} timeline={timeline} />
       {/* 하단 자막: Y 1440 ~ 1920 */}
       <Subtitles timeline={timeline} episode={episode} />
+      {/* 끝 4초: 결과 카드 (Y 480~1250 단독) */}
+      <ResultCard episode={episode} timeline={timeline} />
       {/* 끝 4초: 구독·좋아요 CTA (자막 위) */}
       <CtaOverlay episode={episode} timeline={timeline} />
       <SoundTrack ep={ep} episode={episode} timeline={timeline} />

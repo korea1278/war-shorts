@@ -2,6 +2,8 @@ import React from 'react';
 import {Audio, interpolate, Sequence, staticFile} from 'remotion';
 import {buildArmorSfx} from '../lib/armor';
 import {buildMissileSfx} from '../lib/missile';
+import {buildAirSfx} from '../lib/air';
+import {resultOn, RESULT_SEC} from '../lib/result';
 import {buildSfx, FPS, Sfx, videoSec} from '../lib/schedule';
 import {Episode, Timeline} from '../lib/types';
 import {CTA_SEC, ctaOn} from './CtaOverlay';
@@ -16,6 +18,16 @@ const ctaSfx = (ep: Episode, tl: Timeline): Sfx[] => {
   ];
 };
 
+// 결과 카드 진입: 묵직한 Metal Hit 타격음 (hit + thud 겹침, 30%)
+const resultSfx = (ep: Episode, tl: Timeline): Sfx[] => {
+  if (!resultOn(ep)) return [];
+  const at = videoSec(tl) - RESULT_SEC;
+  return [
+    {file: 'hit.mp3', at, volume: 1.0 * 0.3},
+    {file: 'thud.mp3', at: at + 0.02, volume: 0.9 * 0.3},
+  ];
+};
+
 // 채널별 믹싱: 나레이션 1.0 고정, 말하는 동안 효과음·BGM을 자동으로 낮춤(덕킹)
 const NARRATION_VOL = 1.0;
 const BGM_VOL = 0.11;
@@ -24,8 +36,10 @@ const DUCK = 0.5; // 말하는 동안 효과음·BGM 배율
 export const SoundTrack: React.FC<{ep: string; episode: Episode; timeline: Timeline}> = ({ep, episode, timeline}) => {
   const cues = [
     ...(episode.scenario === 'armor' ? buildArmorSfx(episode, timeline)
-      : episode.scenario === 'missile' ? buildMissileSfx(episode, timeline) : buildSfx(episode, timeline)),
+      : episode.scenario === 'missile' ? buildMissileSfx(episode, timeline)
+      : episode.scenario === 'air' ? buildAirSfx(episode, timeline) : buildSfx(episode, timeline)),
     ...ctaSfx(episode, timeline),
+    ...resultSfx(episode, timeline),
   ];
   const total = Math.round(videoSec(timeline) * FPS);
   // 문장 구간(초) → 덕킹 곡선 (앞뒤 0.15초 완만하게)

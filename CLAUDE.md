@@ -14,7 +14,12 @@
 - 시나리오 `"missile"`(EP03~): `src/lib/missile.ts` + `MissileOverlay.tsx` — 발사대 점화·연기 → 고각 탄도(지상궤적+고도, 고도는 tanh 압축) → 대기권 경계 100km 점선·고도/마하 계기 → 2단계 재진입·화면 위에서 수직 낙하 → 충돌 섬광·지면 파동 링·화면 진동(캔버스 transform) → 관통 깊이 게이지 → 심도 폭발·벙커 매몰. `map.missile`의 `impactCue`(충돌)·`buryCue`(매몰) 자막 기준. 카메라 bearing을 탄도 방향+90°로 두면 궤적이 옆에서 본 포물선으로 보임
 - 효과음 추가(EP03, ffmpeg 합성): `rocket.mp3` 로켓 점화·발사, `reentry.mp3` 초음속 재진입 굉음(끝 소닉붐), `thud.mp3` 지하 관통 강타음, `deepboom.mp3` 심도 폭발음
 - **구독·좋아요 CTA (EP03~, 모든 에피소드 기본)**: `CtaOverlay.tsx` — 끝 4초, 자막 위(Y 1236~) 네온 레드 뱃지 `🔔 다음 시뮬레이션이 궁금하다면? [구독] [좋아요]`(종·엄지는 SVG), 스케일 0.9→1.0 스프링 바운스 + 블러 없는 펄스 링, 1.6초에 구독 버튼 눌림→'구독중', 2.3초 좋아요 강조. 대본 마지막 문장에 구독·좋아요 멘트. 끄려면 `"cta": false`
-- 카드 옵션: `side: "gray"`(비교 기준값 회색), `numPrefix`(숫자 앞 단위, 예 "마하"), `stats.vsPhase2`
+- 시나리오 `"air"`(EP04~): `src/lib/air.ts` + `AirOverlay.tsx` — 1단계 북한 편대(경로 `map.air.routes`) 남하 궤적·화살표 → 2단계 KF-21 편대 AESA 부채꼴 빔(`radarKm`·`radarBearing`·`radarSpread`) → 록온 박스 → 미티어 푸른 궤적·연속 공중 폭발. 큐 `radarCue`·`lockCue`·`fireCue`·`killCue`. 효과음 `jet.mp3`(ffmpeg 합성 제트 굉음) 추가
+- **Safe Area 레이아웃 `"layout": "safe"` (EP04~)**: 뱃지 Y130·24px·`#FF3B30`, 타이틀 Y180·60px 고정, 카드 Y352~, 지도 384~1440, 자막 Y1550~1720·우측 150px 마진(2줄 자동), CTA 바닥 Y1535
+- **결과 카드 `"result"` (EP04~)**: 총 프레임-120(끝 4초)부터 `ResultCard.tsx` Y480~1250 단독 + 스탯 박스 opacity 0 페이드 + 지도 80% 딤 + Metal Hit(hit+thud)
+- 자막 단일 활성화: `Subtitles.tsx`가 정수 프레임 `[startFrame, endFrame)`로 판정, 간격 5프레임 미만은 다음 자막까지 늘려 Cut. 검증 스크립트가 겹침·`ceil(오디오×30)+45` 프레임 확인
+- 자막에서 끊기면 안 되는 단어(예 "마하 4")는 `t`에 줄바꿈 없는 공백(U+00A0)
+- 카드 옵션: `valueText`(숫자 대신 글자, 예 "20~30"), `side: "gray"`(비교 기준값 회색), `numPrefix`(숫자 앞 단위, 예 "마하"), `stats.vsPhase2`
 - 상세 위성: `map.mosaicDefs {"이름": [줌, [서,남,동,북]]}` + `map.mosaics: ["이름"]` → 근접 장면용 고해상도 모자이크(EP02 문산 z14)
 
 ## 새 에피소드 만드는 법

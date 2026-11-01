@@ -50,10 +50,13 @@ export const CtaOverlay: React.FC<{episode: Episode; timeline: Timeline}> = ({ep
     fontSize: 46, fontWeight: 900, border: '4px solid #000',
   } as const;
   return (
-    <div style={{position: 'absolute', left: 0, top: 1236, width: 1080, display: 'flex', justifyContent: 'center', opacity}}>
+    // safe 레이아웃(EP04~): 결과 카드(480~1250)와 자막(1550~) 사이, 바닥이 Y 1535에 오도록 · 우측 150px 마진 안
+    <div style={episode.layout === 'safe'
+      ? {position: 'absolute', left: 40, width: 890, bottom: 1920 - 1535, display: 'flex', justifyContent: 'center', opacity}
+      : {position: 'absolute', left: 0, top: 1236, width: 1080, display: 'flex', justifyContent: 'center', opacity}}>
       <div
         style={{
-          transform: `scale(${scale})`,
+          transform: `scale(${scale * (episode.layout === 'safe' ? 0.82 : 1)})`, transformOrigin: episode.layout === 'safe' ? '50% 100%' : '50% 50%',
           background: 'rgba(10,0,4,0.93)', border: `5px solid ${RED}`, borderRadius: 34, boxShadow: glow,
           padding: '18px 34px 22px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         }}
