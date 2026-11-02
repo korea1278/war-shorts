@@ -56,7 +56,7 @@ export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({tim
           </div>
         )}
         <div style={{position: 'absolute', bottom: 34, left: 40, width: W, textAlign: 'center', fontSize: 24, color: 'rgba(255,255,255,0.5)', fontWeight: 900}}>
-          ※ 공개 자료를 바탕으로 한 가상 시나리오입니다
+          {episode.disclaimer ?? '※ 공개 자료를 바탕으로 한 가상 시나리오입니다'}
         </div>
       </div>
     );
@@ -79,7 +79,7 @@ export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({tim
         );
       })()}
       <div style={{position: 'absolute', bottom: 34, width: '100%', textAlign: 'center', fontSize: 26, color: 'rgba(255,255,255,0.5)', fontWeight: 900}}>
-        ※ 공개 자료를 바탕으로 한 가상 시나리오입니다
+        {episode.disclaimer ?? '※ 공개 자료를 바탕으로 한 가상 시나리오입니다'}
       </div>
     </div>
   );

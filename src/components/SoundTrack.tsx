@@ -7,6 +7,8 @@ import {resultOn, RESULT_SEC} from '../lib/result';
 import {buildSfx, FPS, Sfx, videoSec} from '../lib/schedule';
 import {Episode, Timeline} from '../lib/types';
 import {CTA_SEC, ctaOn} from './CtaOverlay';
+import {buildInfographicSfx} from '../ep05/sfx';
+import {InfographicEpisode} from '../ep05/types';
 
 // 끝 4초 구독·좋아요 뱃지 등장음 (효과음 30% 규칙 동일)
 const ctaSfx = (ep: Episode, tl: Timeline): Sfx[] => {
@@ -35,7 +37,8 @@ const DUCK = 0.5; // 말하는 동안 효과음·BGM 배율
 
 export const SoundTrack: React.FC<{ep: string; episode: Episode; timeline: Timeline}> = ({ep, episode, timeline}) => {
   const cues = [
-    ...(episode.scenario === 'armor' ? buildArmorSfx(episode, timeline)
+    ...((episode.scenario as string) === 'infographic' ? buildInfographicSfx(episode as unknown as InfographicEpisode, timeline)
+      : episode.scenario === 'armor' ? buildArmorSfx(episode, timeline)
       : episode.scenario === 'missile' ? buildMissileSfx(episode, timeline)
       : episode.scenario === 'air' ? buildAirSfx(episode, timeline) : buildSfx(episode, timeline)),
     ...ctaSfx(episode, timeline),

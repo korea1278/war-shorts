@@ -72,6 +72,7 @@ export type Episode = {
   layout?: 'safe'; // EP04~: 모바일 Safe Area 규격 (상단 120~350·자막 1550~1720·우측 150px 마진)
   result?: ResultData; // 있으면 끝 4초 결과 카드 + 스탯 페이드아웃 + 지도 80% 딤
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
+  disclaimer?: string; // 자막 아래 작은 안내 문구 (기본: 가상 시나리오 안내)
   highlight?: string[]; // 자막 노랑 강조 단어 (숫자는 자동)
   stats: {phase1: Stat[]; phase2: Stat[]; vs?: boolean; vsPhase2?: boolean};
   map: {

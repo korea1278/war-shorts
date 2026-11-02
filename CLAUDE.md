@@ -22,6 +22,16 @@
 - 카드 옵션: `valueText`(숫자 대신 글자, 예 "20~30"), `side: "gray"`(비교 기준값 회색), `numPrefix`(숫자 앞 단위, 예 "마하"), `stats.vsPhase2`
 - 상세 위성: `map.mosaicDefs {"이름": [줌, [서,남,동,북]]}` + `map.mosaics: ["이름"]` → 근접 장면용 고해상도 모자이크(EP02 문산 z14)
 
+## QHD 인포그래픽 템플릿 (EP05~, `"scenario": "infographic"`)
+- 컴포지션 `ep05-military-gap` · **1440x2560(QHD)** · 30fps — 유튜브가 1440p 업로드에 VP09/AV01 고화질 코덱을 붙이게 함. 워크플로는 `episode.json`의 `"composition"`으로 렌더 대상을 자동 선택(없으면 `Short`)
+- 길이 규칙은 동일(나레이션 + 1.5초). `maxNarrationSec: 32.5` → 34초 이내
+- 순수 2D/SVG 벡터: `src/components/infographic/` — `CountUpText`(0→목표 카운트업, 8px 외곽선·하드 섀도우), `BouncingAsset`(spring damping 12·mass 0.8·stiffness 120 + 착지 스쿼시), `TerritoryHighlight`(북한 #FF3B30 0.6 + 인공기 clip-path / 남한 #0066FF 0.6 + 태극기 clip-path, 군사분계선 네온 화이트 3단), `NightMapOverlay`(NASA GIBS Black Marble 야간 모자이크 크로스페이드, 못 받으면 벡터 도시 불빛), `TargetPulseRing`(동심원 펄스 + 뱃지), `assets.tsx`(전투기·군함·돈다발·핵 마크·국기 SVG)
+- 장면은 문장별 `scene` 키(`intro/army/air/gdp/night/nuke/cta`) 시작 시각과 자막 큐(`nkCue`·`rokCue`·`gdpStamp.cue`·`ulsan.cue`)로 자동 배치 (`src/ep05/plan.ts`) → 숫자는 `stats`·`ulsan`·`gdpStamp`만 바꾸면 됨
+- 지도: `map.fit` 범위를 지도 프레임 높이에 맞춤, 주간 `mosaicDefs`·야간 `nightDefs`(줌 최대 8) 모두 `pipeline/tiles.py`가 받음. 카메라는 `src/ep05/layout.ts` `camAt`(울산 줌인 → 핵 장면 북쪽)
+- 자막·CTA는 1080 Safe Area 컴포넌트를 ×4/3 스케일로 재사용(DOM 벡터라 선명). 자막 아래 안내 문구는 `"disclaimer"`로 교체 가능
+- 효과음 `src/ep05/sfx.ts` (30% 규칙·덕킹 동일). 업로드용 메타데이터는 `dist/epNN_metadata.txt` → Artifacts에 같이 첨부
+- 수치는 반드시 최신 공식 자료로 확인 후 넣고 출처를 패널·설명란에 표기 (EP05: 2022 국방백서, 한국은행 2025 북한 GNI)
+
 ## 새 에피소드 만드는 법
 1. `episodes/<epNN-이름>/episode.json` 작성 (형식은 `episodes/ep01-artillery/episode.json`)
    - `script`: 문장 단위. 숫자는 `say`로 읽는 발음 지정 (1,000문 → "천 문", K9 → "케이나인")

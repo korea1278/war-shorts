@@ -75,12 +75,15 @@ jobs:
       - name: 오디오 공백·자막 싱크 검증 (ffmpeg silencedetect + faster-whisper)
         run: python scripts/validate_audio_sync.py "$EP" --require-whisper
 
-      - name: 렌더링 (1080x1920 · 30fps · 길이 = 나레이션 + 1.5초)
+      - name: 렌더링 (기본 1080x1920 · QHD 에피소드는 1440x2560 · 30fps · 길이 = 나레이션 + 1.5초)
         run: |
           npx remotion browser ensure
+          # episode.json의 "composition"(예: ep05-military-gap, QHD)이 있으면 그 컴포지션, 없으면 Short
+          COMP=$(python -c "import json;print(json.load(open('episodes/$EP/episode.json')).get('composition','Short'))")
+          echo "COMP=$COMP" >> "$GITHUB_ENV"
           START=$(date +%s)
           # 지도는 Canvas 2D(CPU) 렌더 → WebGL 불필요. --disable-dev-shm-usage는 Remotion이 기본으로 붙임
-          npx remotion render src/index.ts Short "out/$EP.mp4" \
+          npx remotion render src/index.ts "$COMP" "out/$EP.mp4" \
             --props="{\"ep\":\"$EP\"}" --gl=swiftshader --concurrency=2 \
             --codec=h264 --crf=18 --x264-preset=veryfast --audio-bitrate=192k \
             --timeout=120000 --log=info
@@ -89,6 +92,8 @@ jobs:
           ffmpeg -y -v error -i "out/$EP.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 192k out/final.mp4
           mv out/final.mp4 "out/$EP.mp4"
           cp "public/ep/$EP/$EP.srt" out/
+          # 유튜브 업로드용 메타데이터 (dist/epNN_metadata.txt)가 있으면 같이 첨부
+          cp "dist/${EP%%-*}_metadata.txt" out/ 2>/dev/null || true
           # 렌더 후 검증: MP4 길이가 예정 길이와 같은지
           python scripts/validate_audio_sync.py "$EP" --video "out/$EP.mp4"
           # 확인용 장면 컷 3장
@@ -97,10 +102,11 @@ jobs:
       - name: 결과 요약
         run: |
           D=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "out/$EP.mp4")
+          RES=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "out/$EP.mp4")
           ENGINE=$(python -c "import json;print(json.load(open('public/ep/$EP/timeline.json'))['engine'])")
           {
             echo "## ✅ $EP 렌더 완료"
-            echo "- 길이: ${D}초 (나레이션 + 여운 1.5초) · 해상도 1080x1920 · 30fps"
+            echo "- 길이: ${D}초 (나레이션 + 여운 1.5초) · 해상도 ${RES} · 30fps · 컴포지션 ${COMP}"
             echo "- 나레이션 엔진: $ENGINE"
             echo "- 렌더 시간: ${RENDER_SEC}초"
             echo "- 다운로드: 아래 Artifacts의 **$EP-shorts** (3일 뒤 자동 삭제)"
@@ -115,4 +121,5 @@ jobs:
             out/${{ inputs.episode }}.srt
             out/*.jpg
             out/validate_*.md
+            out/*_metadata.txt
           retention-days: 3
