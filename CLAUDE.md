@@ -32,6 +32,13 @@
 - 효과음 `src/ep05/sfx.ts` (30% 규칙·덕킹 동일). 업로드용 메타데이터는 `dist/epNN_metadata.txt` → Artifacts에 같이 첨부
 - 수치는 반드시 최신 공식 자료로 확인 후 넣고 출처를 패널·설명란에 표기 (EP05: 2022 국방백서, 한국은행 2025 북한 GNI)
 
+## 다층 방공망 시뮬레이션 (EP06~, `"scenario": "defense"`)
+- 컴포지션 `ep06-missile-defense` · 1440x2560 · 30fps · 목표 35초 (`maxNarrationSec: 33.5` + 여운 1.5초)
+- 인트로·발사: 한반도 지도 위 북한 발사 지점(`map.launchSites`) → 남쪽 표적(`map.targets`) 붉은 궤적 26줄기, 평양–서울 거리선
+- 이후 측면 고도 무대: `AltitudeLayerGrid`(레이어 `layers`: 상층 L-SAM 시안 / 15~40km 천궁-II·PAC-3 그린 / 15km 이하 LAMD 옐로 + 우측 0~60km 눈금자), `MissileTrajectory`(KN-23 붉은 궤적·풀업 기동·예상 궤도 점선·추적 박스, 요격탄 수직 상승→교차→섬광·충격파), `defenseAssets.tsx`(그린파인 레이더·L-SAM·천궁-II·패트리어트·LAMD 차량·스카이라인 SVG)
+- 연출 시각은 `src/ep06/plan.ts`(scene 키 `intro/launch/lsam/pullup/mid/lamd/outro/cta` + 자막 큐 `lsam.hitCue`·`pullup.cue`·`mid.fireCue/hitCue`·`lamd.cue/hitCue`·`outro.coreCue`), 탄두·요격 계산은 `src/ep06/sim.ts`(시간의 순수 함수), 효과음 `src/ep06/sfx.ts`
+- 수치 근거: PAC-3는 공개 자료상 15~40km(천궁-II와 같은 층)이라 하층(LAMD)과 분리. L-SAM·LAMD는 미배치 → "배치 예정" 표현
+
 ## 새 에피소드 만드는 법
 1. `episodes/<epNN-이름>/episode.json` 작성 (형식은 `episodes/ep01-artillery/episode.json`)
    - `script`: 문장 단위. 숫자는 `say`로 읽는 발음 지정 (1,000문 → "천 문", K9 → "케이나인")
