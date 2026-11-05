@@ -22,6 +22,11 @@
 - 카드 옵션: `valueText`(숫자 대신 글자, 예 "20~30"), `side: "gray"`(비교 기준값 회색), `numPrefix`(숫자 앞 단위, 예 "마하"), `stats.vsPhase2`
 - 상세 위성: `map.mosaicDefs {"이름": [줌, [서,남,동,북]]}` + `map.mosaics: ["이름"]` → 근접 장면용 고해상도 모자이크(EP02 문산 z14)
 
+## F-35A 스텔스 공중전 (EP07~, `"scenario": "air"` 확장)
+- `map.air.stealth`: `cue` 자막부터 북한 조기경보 레이더(`ewRadars` 붉은 반경·회전 스윕·"탐지 실패") + F-35A 침투 점선·반투명 유령 실루엣(`path`, 끝점=편대 선두). 2단계 진입 후 페이드아웃
+- `bvrCue`: 아군 선두기↔가장 가까운 적기 노란 교전선 + 실제 거리 km 라벨. `radarLabel`(부채꼴 라벨)·`missileName`(격추 카운터 미사일명, 예 "암람")
+- 자막: 문장별 `subs`로 의미 단위 직접 분할(이어 붙인 글자가 `t`와 다르면 prepare.py 중단), `highlightColor`(EP07 #FFE500), `warn` 단어는 경고 레드 #FF3B30
+
 ## QHD 인포그래픽 템플릿 (EP05~, `"scenario": "infographic"`)
 - 컴포지션 `ep05-military-gap` · **1440x2560(QHD)** · 30fps — 유튜브가 1440p 업로드에 VP09/AV01 고화질 코덱을 붙이게 함. 워크플로는 `episode.json`의 `"composition"`으로 렌더 대상을 자동 선택(없으면 `Short`)
 - 길이 규칙은 동일(나레이션 + 1.5초). `maxNarrationSec: 32.5` → 34초 이내

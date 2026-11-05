@@ -18,6 +18,8 @@ export type AirPlan = {
   jets: Jet[];
   meteors: Meteor[];
   killAt: number[]; // 전투기별 격추 시각
+  stealthAt: number; // EP07~: 스텔스 침투 연출 시작 (없으면 Infinity)
+  bvrAt: number; // EP07~: BVR 교전선 시작 (없으면 Infinity)
 };
 
 const cache = new Map<string, AirPlan>();
@@ -60,7 +62,9 @@ export const buildAirPlan = (ep: Episode, tl: Timeline): AirPlan => {
   }));
   const killAt = jets.map(() => Infinity);
   meteors.forEach((m) => (killAt[m.jet] = m.launch + m.flight));
-  const plan = {t2, T, endAt, radarAt, lockAt, fireAt, killEnd, jets, meteors, killAt};
+  const stealthAt = a.stealth ? Math.min(t2 - 2, Math.max(0.8, cueTime(tl, a.stealth.cue, 5) - 0.2)) : Infinity;
+  const bvrAt = a.bvrCue ? Math.max(radarAt, cueTime(tl, a.bvrCue, lockAt) - 0.1) : Infinity;
+  const plan = {t2, T, endAt, radarAt, lockAt, fireAt, killEnd, jets, meteors, killAt, stealthAt, bvrAt};
   cache.set(key, plan);
   return plan;
 };
@@ -97,6 +101,8 @@ export const buildAirSfx = (ep: Episode, tl: Timeline): Sfx[] => {
     add('pop.mp3', at, 0.6);
     add('typewriter.mp3', at + 0.05, 0.3, 0.9);
   });
+  // 스텔스 침투: 북한 조기경보 레이더 스윕 핑 (반응 없음 → 낮고 느리게)
+  if (Number.isFinite(p.stealthAt)) for (let k = 0; k < 4; k++) add('radar.mp3', p.stealthAt + 0.4 + k * 1.6, 0.45);
   add('whoosh.mp3', p.t2 - 0.25, 0.7);
   add('drum.mp3', p.t2, 0.6);
   // AESA 레이더 핑 (빔 방사 → 포착 순간 연속)

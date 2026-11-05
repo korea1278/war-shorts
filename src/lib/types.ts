@@ -27,6 +27,19 @@ export type AirMap = {
   lockCue?: string; // 이 자막에서 표적 포착 박스
   fireCue?: string; // 이 자막에서 미티어 발사
   killCue?: string; // 이 자막에서 연속 공중 폭발 마무리
+  radarLabel?: string; // 부채꼴 끝 라벨 (기본 "AESA 탐지 {radarKm}km+")
+  missileName?: string; // 격추 카운터 미사일 이름 (기본 "미티어")
+  bvrCue?: string; // EP07~: 이 자막부터 발사 직후까지 아군 선두기–적 선두기 BVR 교전선 + 거리 표기
+  stealth?: StealthMap; // EP07~: 1단계 스텔스 침투 연출
+};
+
+/** EP07~: 북한 조기경보 레이더망 속 F-35A 스텔스 침투 (1단계) */
+export type StealthMap = {
+  cue: string; // 이 자막부터 레이더망·침투선 등장
+  ewRadars: {pos: LngLat; km: number; name?: string}[]; // 북한 조기경보 레이더 기지 (탐지 반경 km)
+  path: LngLat[]; // F-35A 침투 경로 (끝점 = 2단계 편대 선두 위치 권장)
+  label?: string; // 침투기 라벨 (기본 "F-35A 스텔스 침투")
+  noContact?: string; // 레이더 옆 문구 (기본 "탐지 실패")
 };
 
 /** 끝 4초 결과 카드 */
@@ -67,13 +80,15 @@ export type CamKey = {t: number; center: LngLat; zoom: number; pitch: number; be
 export type Episode = {
   id: string;
   title: [string, string];
-  script: {t: string; say?: string; phase2?: boolean}[];
+  script: {t: string; say?: string; phase2?: boolean; subs?: string[]}[];
   scenario?: 'artillery' | 'armor' | 'missile' | 'air';
   layout?: 'safe'; // EP04~: 모바일 Safe Area 규격 (상단 120~350·자막 1550~1720·우측 150px 마진)
   result?: ResultData; // 있으면 끝 4초 결과 카드 + 스탯 페이드아웃 + 지도 80% 딤
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
   disclaimer?: string; // 자막 아래 작은 안내 문구 (기본: 가상 시나리오 안내)
   highlight?: string[]; // 자막 노랑 강조 단어 (숫자는 자동)
+  highlightColor?: string; // 강조 노랑 색 (EP07: #FFE500, 기본 #FFD000)
+  warn?: string[]; // 자막 경고 레드(#FF3B30) 단어 (EP07~)
   stats: {phase1: Stat[]; phase2: Stat[]; vs?: boolean; vsPhase2?: boolean};
   map: {
     mosaics?: string[]; // 추가 상세 위성 모자이크 이름 (pipeline/tiles.py)

@@ -210,7 +210,11 @@ def main(ep, mock=False):
         if line.get("phase2") and phase2 is None:
             phase2 = st
         sentences.append({"i": i, "start": round(st, 3), "end": round(en, 3), "text": line["t"]})
-        cs = split_chunks(line["t"])
+        # EP07~: "subs"가 있으면 의미 단위로 직접 나눈 자막을 그대로 사용 (자동 분할 대신)
+        cs = line.get("subs") or split_chunks(line["t"])
+        squash = lambda s: re.sub(r"\s", "", s)
+        if line.get("subs") and squash("".join(cs)) != squash(line["t"]):
+            sys.exit(f"[오류] {i + 1}번 문장 subs를 이어 붙인 글자가 t와 다릅니다: {cs}")
         ws = [weight(c) for c in cs]
         acc = st
         for c, wv in zip(cs, ws):

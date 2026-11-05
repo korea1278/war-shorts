@@ -49,6 +49,111 @@ const screenAng = (pp: P, a: LngLat, b: LngLat) => {
   return Math.atan2(B[1] - A[1], B[0] - A[0]);
 };
 
+/** EP07~: 북한 조기경보 레이더망(붉은 원·회전 스윕) 속을 통과하는 F-35A 스텔스 침투선 */
+const drawStealth = (ctx: C, sec: number, ep: Episode, plan: AirPlan, pp: P) => {
+  const st = ep.map.air!.stealth;
+  if (!st || sec < plan.stealthAt) return;
+  const fadeOut = 1 - clamp01((sec - (plan.t2 + 0.6)) / 0.8);
+  if (fadeOut <= 0) return;
+  const k = clamp01((sec - plan.stealthAt) / 0.6) * fadeOut;
+  // 조기경보 레이더 탐지 반경 + 회전 스윕
+  st.ewRadars.forEach((r, i) => {
+    const ring = geoCircle(r.pos, r.km, 48).map(pp);
+    path(ctx, ring, true);
+    ctx.globalAlpha = 0.1 * k;
+    ctx.fillStyle = COLORS.nk;
+    ctx.fill();
+    ctx.globalAlpha = k;
+    ctx.setLineDash([14, 10]);
+    ctx.strokeStyle = 'rgba(255,90,90,0.9)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const sw = ((sec - plan.stealthAt) * 90 + i * 140) % 360;
+    const beam: LngLat[] = [r.pos, ...geoCircle(r.pos, r.km, 10, sw - 14, sw), r.pos];
+    path(ctx, beam.map(pp), true);
+    ctx.globalAlpha = 0.28 * k;
+    ctx.fillStyle = '#ff6b6b';
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    const [x, y] = pp(r.pos);
+    if (off(x, y, 0)) return;
+    // 레이더 기지 표시 (사각형 + 안테나)
+    ctx.globalAlpha = k;
+    ctx.fillStyle = COLORS.nk;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.fillRect(x - 12, y - 12, 24, 24);
+    ctx.strokeRect(x - 12, y - 12, 24, 24);
+    ctx.globalAlpha = 1;
+    const blink = 0.65 + 0.35 * Math.sin(sec * 7 + i);
+    ctx.globalAlpha = k * blink;
+    label(ctx, Math.min(MAP_W - 200, Math.max(200, x)), Math.max(60, y - 44), `${r.name ?? '조기경보 레이더'} · ${st.noContact ?? '탐지 실패'}`, 28, '#ff8a8a');
+    ctx.globalAlpha = 1;
+  });
+  // F-35A 침투선 (푸른 점선, 진행도는 stealthAt → t2 - 0.4)
+  const u = clamp01((sec - plan.stealthAt) / Math.max(1, plan.t2 - 0.4 - plan.stealthAt));
+  const N = 30;
+  const pts: XY[] = [];
+  for (let i = 0; i <= N; i++) pts.push(pp(alongPath(st.path, (u * i) / N).p));
+  path(ctx, pts);
+  ctx.setLineDash([10, 12]);
+  ctx.lineDashOffset = -sec * 40;
+  glowStroke(ctx, COLORS.chunmoo, 3, '#c8f6ff', 0.9 * k);
+  ctx.setLineDash([]);
+  const now = alongPath(st.path, u);
+  const prev = alongPath(st.path, Math.max(0, u - 0.02));
+  const [x, y] = pp(now.p);
+  if (!off(x, y)) {
+    const ang = u > 0.02 ? screenAng(pp, prev.p, now.p) : -Math.PI / 2;
+    // 반투명 '유령' 실루엣: 레이더에 안 잡히는 느낌
+    ctx.globalAlpha = k * (0.55 + 0.3 * Math.sin(sec * 5));
+    jetGlyph(ctx, x, y, ang, 22, '#4da3ff', '#001a40');
+    ctx.globalAlpha = k;
+    label(ctx, Math.min(MAP_W - 220, Math.max(220, x)), Math.min(MAP_H - 80, y + 64), st.label ?? 'F-35A 스텔스 침투', 32, '#00E5FF');
+    ctx.globalAlpha = 1;
+  }
+};
+
+/** EP07~: 아군 선두기 ↔ 적 선두 편대 BVR 교전선 + 실제 거리(km) */
+const drawBvr = (ctx: C, sec: number, ep: Episode, plan: AirPlan, pp: P) => {
+  if (sec < plan.bvrAt || sec > plan.killEnd - 0.5) return;
+  const a = ep.map.air!;
+  // 아직 살아 있는 적기 중 아군 선두기에 가장 가까운 기체
+  let best = -1;
+  let bd = Infinity;
+  plan.jets.forEach((_, ji) => {
+    if (sec >= plan.killAt[ji]) return;
+    const q = jetPos(ep, plan, ji, sec).p;
+    const d = kmBetween(a.kf21[0], q);
+    if (d < bd) [bd, best] = [d, ji];
+  });
+  if (best < 0) return;
+  const A = pp(a.kf21[0]);
+  const B = pp(jetPos(ep, plan, best, sec).p);
+  const k = clamp01((sec - plan.bvrAt) / 0.4);
+  ctx.beginPath();
+  ctx.moveTo(A[0], A[1]);
+  ctx.lineTo(B[0], B[1]);
+  ctx.setLineDash([20, 10]);
+  glowStroke(ctx, COLORS.yellow, 3, '#fff6c0', k);
+  ctx.setLineDash([]);
+  const mx = (A[0] + B[0]) / 2;
+  const my = (A[1] + B[1]) / 2;
+  ctx.globalAlpha = k;
+  label(ctx, Math.min(MAP_W - 230, Math.max(230, mx)), Math.max(70, my - 40), `BVR 교전 ${Math.round(bd)}km`, 34, COLORS.yellow);
+  ctx.globalAlpha = 1;
+};
+
+const kmBetween = (p: LngLat, q: LngLat) => {
+  const R = 6371;
+  const toR = Math.PI / 180;
+  const dLat = (q[1] - p[1]) * toR;
+  const dLng = (q[0] - p[0]) * toR;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(p[1] * toR) * Math.cos(q[1] * toR) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+
 export const drawAir = (ctx: C, sec: number, ep: Episode, plan: AirPlan, pp: P) => {
   const a = ep.map.air!;
   const p2 = sec >= plan.t2;
@@ -99,6 +204,8 @@ export const drawAir = (ctx: C, sec: number, ep: Episode, plan: AirPlan, pp: P) 
       label(ctx, x, y - 30, l.text, l.size, '#ffe9a8');
     });
 
+  drawStealth(ctx, sec, ep, plan, pp);
+
   // ── 2단계: 아군 AESA 부채꼴 레이더 빔 ──
   const R = a.radarKm ?? 200;
   const brg = a.radarBearing ?? 0;
@@ -132,7 +239,7 @@ export const drawAir = (ctx: C, sec: number, ep: Episode, plan: AirPlan, pp: P) 
       }
       if (radarK >= 1) {
         const lp = pp(geoCircle(c, R, 1, brg + spread / 2 - 6, brg + spread / 2 - 6)[0]);
-        label(ctx, Math.min(MAP_W - 200, Math.max(200, lp[0])), Math.max(60, lp[1]), `AESA 탐지 ${R}km+`, 34, '#00E5FF');
+        label(ctx, Math.min(MAP_W - 200, Math.max(200, lp[0])), Math.max(170, lp[1]), a.radarLabel ?? `AESA 탐지 ${R}km+`, 34, '#00E5FF');
       }
     });
   }
@@ -196,6 +303,8 @@ export const drawAir = (ctx: C, sec: number, ep: Episode, plan: AirPlan, pp: P) 
       if (q < 0.12) circle(ctx, x, y, 90, 'rgba(255,255,255,0.5)', 1 - q / 0.12);
     }
   });
+
+  drawBvr(ctx, sec, ep, plan, pp);
 
   // ── 미티어 궤적 (푸른 선, 화면에서 위로 솟는 곡선) ──
   plan.meteors.forEach((m, n) => {
@@ -261,7 +370,7 @@ export const drawAir = (ctx: C, sec: number, ep: Episode, plan: AirPlan, pp: P) 
   // 격추 카운터
   if (sec >= plan.fireAt) {
     const killed = plan.killAt.filter((t) => t <= sec).length;
-    label(ctx, MAP_W / 2, 250, `미티어 요격 · 격추 ${killed}기`, 36, COLORS.yellow);
+    label(ctx, MAP_W / 2, 250, `${a.missileName ?? '미티어'} 요격 · 격추 ${killed}기`, 36, COLORS.yellow);
   }
 };
 
