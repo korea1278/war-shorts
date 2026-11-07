@@ -84,7 +84,8 @@ class Report:
 def whisper_words(audio):
     from faster_whisper import WhisperModel
     model = WhisperModel("tiny", device="cpu", compute_type="int8")
-    segs, _ = model.transcribe(str(audio), language="ko", word_timestamps=True, beam_size=1, vad_filter=False)
+    segs, _ = model.transcribe(str(audio), language="ko", word_timestamps=True, beam_size=1, vad_filter=False,
+                                condition_on_previous_text=False)  # tiny 모델 반복·건너뛰기 방지 (EP08)
     words, text = [], []
     for s in segs:
         text.append(s.text)

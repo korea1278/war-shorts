@@ -57,13 +57,21 @@ jobs:
         run: python pipeline/tiles.py
 
       # 같은 대본이면 TTS를 다시 사지 않도록 캐시
-      - name: 나레이션 캐시
-        uses: actions/cache@v4
+      - name: 나레이션 캐시 불러오기
+        id: ttscache
+        uses: actions/cache/restore@v4
         with:
           path: public/ep/${{ inputs.episode }}/tts
           key: tts-${{ inputs.episode }}-${{ hashFiles(format('episodes/{0}/episode.json', inputs.episode), 'pipeline/prepare.py') }}
       - name: 나레이션 + 자막 타임라인
         run: python pipeline/prepare.py "$EP"
+      # 검증·렌더가 실패해도 산 TTS는 바로 저장 → 다시 실행할 때 크레딧 재사용
+      - name: 나레이션 캐시 저장
+        if: steps.ttscache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: public/ep/${{ inputs.episode }}/tts
+          key: tts-${{ inputs.episode }}-${{ hashFiles(format('episodes/{0}/episode.json', inputs.episode), 'pipeline/prepare.py') }}
 
       - name: Whisper tiny 모델 캐시
         uses: actions/cache@v4
@@ -122,4 +130,14 @@ jobs:
             out/*.jpg
             out/validate_*.md
             out/*_metadata.txt
+          retention-days: 3
+
+      - name: 실패 시 점검 자료 올리기 (나레이션·타임라인·검증 결과)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.episode }}-debug
+          path: |
+            public/ep/${{ inputs.episode }}/
+            out/validate_*.md
           retention-days: 3
