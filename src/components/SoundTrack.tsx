@@ -3,6 +3,7 @@ import {Audio, interpolate, Sequence, staticFile} from 'remotion';
 import {buildArmorSfx} from '../lib/armor';
 import {buildMissileSfx} from '../lib/missile';
 import {buildAirSfx} from '../lib/air';
+import {buildNavalSfx} from '../lib/naval';
 import {resultOn, RESULT_SEC} from '../lib/result';
 import {buildSfx, FPS, Sfx, videoSec} from '../lib/schedule';
 import {Episode, Timeline} from '../lib/types';
@@ -43,6 +44,7 @@ export const SoundTrack: React.FC<{ep: string; episode: Episode; timeline: Timel
       : (episode.scenario as string) === 'infographic' ? buildInfographicSfx(episode as unknown as InfographicEpisode, timeline)
       : episode.scenario === 'armor' ? buildArmorSfx(episode, timeline)
       : episode.scenario === 'missile' ? buildMissileSfx(episode, timeline)
+      : episode.scenario === 'naval' ? buildNavalSfx(episode, timeline)
       : episode.scenario === 'air' ? buildAirSfx(episode, timeline) : buildSfx(episode, timeline)),
     ...ctaSfx(episode, timeline),
     ...resultSfx(episode, timeline),

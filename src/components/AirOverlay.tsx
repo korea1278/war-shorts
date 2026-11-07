@@ -13,7 +13,7 @@ type XY = [number, number];
 const off = (x: number, y: number, m = 160) => x < -m || x > MAP_W + m || y < -m || y > MAP_H + m;
 
 /** 전투기 실루엣 (화면 방향 ang, 크기 s) */
-const jetGlyph = (ctx: C, x: number, y: number, ang: number, s: number, fill: string, edge = '#000') => {
+export const jetGlyph = (ctx: C, x: number, y: number, ang: number, s: number, fill: string, edge = '#000') => {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(ang);

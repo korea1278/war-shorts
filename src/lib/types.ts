@@ -42,6 +42,28 @@ export type StealthMap = {
   noContact?: string; // 레이더 옆 문구 (기본 "탐지 실패")
 };
 
+/** 해상 항모전 시나리오 (EP08~): 항모전단 서해 진입 → 얕은 수심 킬존 → 지상·해상·공중 3방향 동시 타격 */
+export type NavalMap = {
+  carriers: {name: string; path: LngLat[]}[]; // 항모 항적 (1단계 붉은 점선, 끝점 = 정지 위치)
+  escortsPerCarrier?: number; // 항모당 호위함 수 (기본 4)
+  medianLine: LngLat[]; // 서해 중간선 (흰 점선)
+  medianLabel?: string;
+  sea: LngLat[]; // 얕은 수심 음영을 칠할 바다 다각형
+  depthLabel?: string; depthLabelPos: LngLat; depthCue?: string;
+  jetCue?: string; // 이 자막부터 항모 상공 함재기 초계 비행
+  jetLabel?: string;
+  killCue?: string; // 이 자막부터 킬존 + 잠수함 은신 불가 표시
+  killZone: {center: LngLat; rxKm: number; ryKm: number; label?: string};
+  subs: LngLat[]; // 호위 잠수함 위치
+  rangeCue?: string; // 이 자막부터 타격권 원 확장
+  rangeKm: number; rangeLabel?: string;
+  bases: {pos: LngLat; name?: string}[]; // 서해안 암벽 기지 (미사일 발사 원점)
+  fleet: LngLat[]; fleetLabel?: string; // 해군 2함대 함정
+  f15k: LngLat[]; f15kLabel?: string; // F-15K 편대
+  launchCue?: string; fleetCue?: string; slamCue?: string; graveCue?: string;
+  graveLabel?: string; warnLabel?: string;
+};
+
 /** 끝 4초 결과 카드 */
 export type ResultData = {
   label: string;
@@ -81,7 +103,7 @@ export type Episode = {
   id: string;
   title: [string, string];
   script: {t: string; say?: string; phase2?: boolean; subs?: string[]}[];
-  scenario?: 'artillery' | 'armor' | 'missile' | 'air';
+  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval';
   layout?: 'safe'; // EP04~: 모바일 Safe Area 규격 (상단 120~350·자막 1550~1720·우측 150px 마진)
   result?: ResultData; // 있으면 끝 4초 결과 카드 + 스탯 페이드아웃 + 지도 80% 딤
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
@@ -95,6 +117,7 @@ export type Episode = {
     armor?: ArmorMap;
     missile?: MissileMap;
     air?: AirMap;
+    naval?: NavalMap;
     nkOrigins: LngLat[];
     targets: LngLat[];
     seoul: LngLat;

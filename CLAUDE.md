@@ -27,6 +27,11 @@
 - `bvrCue`: 아군 선두기↔가장 가까운 적기 노란 교전선 + 실제 거리 km 라벨. `radarLabel`(부채꼴 라벨)·`missileName`(격추 카운터 미사일명, 예 "암람")
 - 자막: 문장별 `subs`로 의미 단위 직접 분할(이어 붙인 글자가 `t`와 다르면 prepare.py 중단), `highlightColor`(EP07 #FFE500), `warn` 단어는 경고 레드 #FF3B30
 
+## 서해 항모전 (EP08~, `"scenario": "naval"`)
+- `src/lib/naval.ts` + `NavalOverlay.tsx`: 1단계 항모 항적(`map.naval.carriers[].path`, 항모당 호위함 `escortsPerCarrier`)·서해 중간선 흰 점선·얕은 수심 음영(`sea` 다각형, `depthCue`)·함재기 초계(`jetCue`)·킬존 붉은 빗금 타원 + 잠수함 은신 불가(`killCue`·`killZone`·`subs`)·서해안 기지 타격권 원(`rangeCue`·`rangeKm`·`bases`)
+- 2단계: 기지 초음속 미사일(`launchCue`, 시안) → 2함대 함대함(`fleetCue`, 파랑) → F-15K 슬램이알(`slamCue`, 노랑) 순으로 호위함 격침 → 항모 본함은 `graveCue` 직전 일제 타격 + 붉은 X·"항모의 무덤"
+- 서해 위성 모자이크 `mosaicDefs.yellowsea` z9 (기본 back 모자이크는 동경 123.5도부터라 산둥반도가 빠짐)
+
 ## QHD 인포그래픽 템플릿 (EP05~, `"scenario": "infographic"`)
 - 컴포지션 `ep05-military-gap` · **1440x2560(QHD)** · 30fps — 유튜브가 1440p 업로드에 VP09/AV01 고화질 코덱을 붙이게 함. 워크플로는 `episode.json`의 `"composition"`으로 렌더 대상을 자동 선택(없으면 `Short`)
 - 길이 규칙은 동일(나레이션 + 1.5초). `maxNarrationSec: 32.5` → 34초 이내

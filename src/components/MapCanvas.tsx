@@ -13,6 +13,8 @@ import {buildMissilePlan, shakeAt} from '../lib/missile';
 import {drawMissile} from './MissileOverlay';
 import {buildAirPlan} from '../lib/air';
 import {drawAir} from './AirOverlay';
+import {buildNavalPlan} from '../lib/naval';
+import {drawNaval} from './NavalOverlay';
 
 type Assets = {layers: Mosaic[]; borders: {iso: string; rings: Float64Array[]}[]};
 
@@ -121,6 +123,7 @@ export const MapCanvas: React.FC<{episode: Episode; timeline: Timeline; offline:
     const pp = (ll: [number, number]) => projectLL(cam, ll);
     if (episode.scenario === 'armor') drawArmor(ctx, sec, episode, buildArmorPlan(episode, timeline), pp);
     else if (episode.scenario === 'air') drawAir(ctx, sec, episode, buildAirPlan(episode, timeline), pp);
+    else if (episode.scenario === 'naval') drawNaval(ctx, sec, episode, buildNavalPlan(episode, timeline), pp);
     else if (episode.scenario === 'missile') drawMissile(ctx, sec, episode, buildMissilePlan(episode, timeline), pp);
     else drawArtillery(ctx, sec, episode, buildPlan(episode, timeline), pp);
     if (!released.current) {
