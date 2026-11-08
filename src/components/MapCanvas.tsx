@@ -15,6 +15,8 @@ import {buildAirPlan} from '../lib/air';
 import {drawAir} from './AirOverlay';
 import {buildNavalPlan} from '../lib/naval';
 import {drawNaval} from './NavalOverlay';
+import {buildReconPlan} from '../lib/recon';
+import {drawRecon} from './ReconOverlay';
 
 type Assets = {layers: Mosaic[]; borders: {iso: string; rings: Float64Array[]}[]};
 
@@ -65,6 +67,7 @@ const loadAssets = (offline: boolean, extra: string[]): Promise<Assets> => {
         }),
       );
     }
+    layers.sort((a, b) => a.z - b.z); // 저해상도부터 깔아 상세 지도가 위로 오게
     return {layers, borders};
   })();
   return assetsPromise;
@@ -124,6 +127,7 @@ export const MapCanvas: React.FC<{episode: Episode; timeline: Timeline; offline:
     if (episode.scenario === 'armor') drawArmor(ctx, sec, episode, buildArmorPlan(episode, timeline), pp);
     else if (episode.scenario === 'air') drawAir(ctx, sec, episode, buildAirPlan(episode, timeline), pp);
     else if (episode.scenario === 'naval') drawNaval(ctx, sec, episode, buildNavalPlan(episode, timeline), pp);
+    else if (episode.scenario === 'recon') drawRecon(ctx, sec, episode, buildReconPlan(episode, timeline), pp);
     else if (episode.scenario === 'missile') drawMissile(ctx, sec, episode, buildMissilePlan(episode, timeline), pp);
     else drawArtillery(ctx, sec, episode, buildPlan(episode, timeline), pp);
     if (!released.current) {

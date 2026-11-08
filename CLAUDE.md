@@ -77,3 +77,7 @@ python3 pipeline/tiles.py --fake && python3 pipeline/prepare.py ep01-artillery -
 npx remotion still src/index.ts Short out/x.png --frame=300 \
   --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell
 ```
+
+## 정찰 공백 (EP09~, `"scenario": "recon"`)
+- `src/lib/recon.ts` + `ReconOverlay.tsx`: 1단계 감시망·전력 이탈 → 2단계 유투·위성 링크 단절 → 흑색 블라인드(`map.recon.blindZones`) → 사이오 위성 통과 때만 블라인드 해제. 큐는 `map.recon.*Cue`
+- `"exports": {"audio", "subtitles"}`: 지정 경로로 나레이션·자막 JSON을 내보내고 Artifacts에 첨부

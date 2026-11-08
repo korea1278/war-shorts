@@ -64,6 +64,20 @@ export type NavalMap = {
   graveLabel?: string; warnLabel?: string;
 };
 
+/** 정찰 공백 시나리오 (EP09~) */
+export type ReconMap = {
+  hubs: {pos: LngLat; name?: string; labelDx?: number; labelDy?: number}[]; // 첫 항목이 감시망 중심
+  netKm: number;
+  f16: {from: LngLat; to: LngLat; label: string}; f16Cue: string;
+  a10: {pos: LngLat; label: string}; a10Cue: string;
+  mlrs: {pos: LngLat}[]; mlrsLabel: string; mlrsCue: string;
+  u2Track: LngLat[]; u2Label: string; u2Cue: string; linkCue: string;
+  blindZones: LngLat[][]; blindCue: string; blindLabel: string;
+  hidden: {pos: LngLat}[]; hiddenCue: string; hiddenLabel: string;
+  satLons: number[]; satCue: string; satLabel: string; revisitCue: string; revisitLabel: string;
+  gapCue: string; gapLabel: string;
+};
+
 /** 끝 4초 결과 카드 */
 export type ResultData = {
   label: string;
@@ -103,7 +117,7 @@ export type Episode = {
   id: string;
   title: [string, string];
   script: {t: string; say?: string; phase2?: boolean; subs?: string[]}[];
-  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval';
+  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval' | 'recon';
   layout?: 'safe'; // EP04~: 모바일 Safe Area 규격 (상단 120~350·자막 1550~1720·우측 150px 마진)
   result?: ResultData; // 있으면 끝 4초 결과 카드 + 스탯 페이드아웃 + 지도 80% 딤
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
@@ -118,6 +132,7 @@ export type Episode = {
     missile?: MissileMap;
     air?: AirMap;
     naval?: NavalMap;
+    recon?: ReconMap;
     nkOrigins: LngLat[];
     targets: LngLat[];
     seoul: LngLat;

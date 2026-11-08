@@ -100,6 +100,8 @@ jobs:
           ffmpeg -y -v error -i "out/$EP.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 192k out/final.mp4
           mv out/final.mp4 "out/$EP.mp4"
           cp "public/ep/$EP/$EP.srt" out/
+          # episode.json "exports"로 지정한 오디오·자막 JSON도 같이 첨부
+          python -c "import json,shutil,os;e=json.load(open('episodes/$EP/episode.json')).get('exports') or {};[shutil.copy(p,'out/') for p in e.values() if os.path.exists(p)]"
           # 유튜브 업로드용 메타데이터 (dist/epNN_metadata.txt)가 있으면 같이 첨부
           cp "dist/${EP%%-*}_metadata.txt" out/ 2>/dev/null || true
           # 렌더 후 검증: MP4 길이가 예정 길이와 같은지
@@ -130,6 +132,8 @@ jobs:
             out/*.jpg
             out/validate_*.md
             out/*_metadata.txt
+            out/shorts_*.mp3
+            out/shorts_*.json
           retention-days: 3
 
       - name: 실패 시 점검 자료 올리기 (나레이션·타임라인·검증 결과)

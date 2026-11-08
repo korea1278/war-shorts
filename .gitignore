@@ -2,3 +2,5 @@ node_modules/
 out/
 public/tiles/
 public/ep/
+public/audio/
+src/data/shorts_*

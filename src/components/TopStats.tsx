@@ -25,7 +25,7 @@ const Card: React.FC<{s: Stat; at: number; outAt: number}> = ({s, at, outAt}) =>
   const eased = 1 - Math.pow(1 - cnt, 3);
   const col = s.side === 'nk' ? COLORS.nk : s.side === 'gray' ? COLORS.gray : COLORS.rok;
   const bump = 1 + 0.06 * Math.max(0, Math.sin(Math.min(1, (sec - at - 1.1) / 0.3) * Math.PI));
-  const numSize = s.note ? 76 : 88;
+  const numSize = s.note ? (s.valueText ? 62 : 76) : 88;
   return (
     <div
       style={{

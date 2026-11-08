@@ -246,6 +246,16 @@ def main(ep, mock=False):
     srt = "\n".join(f"{n}\n{ts(c['start'])} --> {ts(c['end'])}\n{c['text']}\n" for n, c in enumerate(chunks, 1))
     (out / f"{ep}.srt").write_text(srt, encoding="utf-8")
 
+    # 지시서 지정 경로로 내보내기 (episode.json "exports": {"audio": 경로, "subtitles": 경로})
+    exports = data.get("exports") or {}
+    if exports.get("audio"):
+        Path(exports["audio"]).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(out / "narration.mp3", exports["audio"])
+    if exports.get("subtitles"):
+        Path(exports["subtitles"]).parent.mkdir(parents=True, exist_ok=True)
+        Path(exports["subtitles"]).write_text(json.dumps(
+            [{"start": c["start"], "end": c["end"], "text": c["text"]} for c in chunks], ensure_ascii=False, indent=1), encoding="utf-8")
+
     for f in tdir.glob("_*"):
         f.unlink()
     print(f"영상 길이: {frames}프레임 = {frames / 30:.2f}초 (오디오 {audio_sec:.2f}초 + 여운 {tail}초)")
