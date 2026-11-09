@@ -16,7 +16,7 @@
   "use_speaker_boost": true,
   "speed": 1.15
  },
- "maxNarrationSec": 58.5,
+ "maxNarrationSec": 58.4,
  "tailSec": 1.5,
  "cta": true,
  "autoHighlight": false,

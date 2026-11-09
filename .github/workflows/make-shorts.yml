@@ -63,6 +63,9 @@ jobs:
         with:
           path: public/ep/${{ inputs.episode }}/tts
           key: tts-${{ inputs.episode }}-${{ hashFiles(format('episodes/{0}/episode.json', inputs.episode), 'pipeline/prepare.py') }}
+          # 대본 외 설정만 바뀌어도 같은 문장은 크레딧 재사용 (파일 이름이 대본·목소리 값으로 구분됨)
+          restore-keys: |
+            tts-${{ inputs.episode }}-
       - name: 나레이션 + 자막 타임라인
         run: python pipeline/prepare.py "$EP"
       # 검증·렌더가 실패해도 산 TTS는 바로 저장 → 다시 실행할 때 크레딧 재사용
@@ -104,6 +107,8 @@ jobs:
           python -c "import json,shutil,os;e=json.load(open('episodes/$EP/episode.json')).get('exports') or {};[shutil.copy(p,'out/') for p in e.values() if os.path.exists(p)]"
           # 유튜브 업로드용 메타데이터 (dist/epNN_metadata.txt)가 있으면 같이 첨부
           cp "dist/${EP%%-*}_metadata.txt" out/ 2>/dev/null || true
+          echo "최종 음량:" && ffmpeg -hide_banner -nostats -i "out/$EP.mp4" -af ebur128=peak=true -f null - 2>&1 | tail -12
+          echo "최종 프레임 수: $(ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 "out/$EP.mp4")"
           # 렌더 후 검증: MP4 길이가 예정 길이와 같은지
           python scripts/validate_audio_sync.py "$EP" --video "out/$EP.mp4"
           # 확인용 장면 컷 3장
