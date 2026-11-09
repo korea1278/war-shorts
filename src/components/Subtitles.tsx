@@ -5,8 +5,9 @@ import {COLORS, Episode, Timeline} from '../lib/types';
 // 숫자·핵심 무기명은 노란색 강조 (단어 목록은 episode.json highlight)
 const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // EP07~: warn 단어는 경고 레드(#FF3B30), highlightColor로 강조 노랑 색 지정(기본 #FFD000)
-const makeHL = (words: string[], warn: string[]) =>
-  new RegExp(`(${[...warn.map(esc), ...words.map(esc), '[A-Z]?-?\\d[\\d,.]*[^\\s,.?]*'].join('|')})`, 'g');
+// autoHighlight=false(EP10~): 숫자 자동 강조를 끄고 지정한 단어만 문맥에 맞게 강조
+const makeHL = (words: string[], warn: string[], auto = true) =>
+  new RegExp(`(${[...warn.map(esc), ...words.map(esc), ...(auto ? ['[A-Z]?-?\\d[\\d,.]*[^\\s,.?]*'] : [])].join('|')})`, 'g');
 
 const renderText = (text: string, HL: RegExp, warn: string[], yellow: string) => {
   const parts = text.split(HL);
@@ -18,7 +19,7 @@ const renderText = (text: string, HL: RegExp, warn: string[], yellow: string) =>
 export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({timeline, episode}) => {
   const warn = episode.warn ?? [];
   const yellow = episode.highlightColor ?? COLORS.yellow;
-  const HL = makeHL(episode.highlight ?? ['K9', '천무', '장사정포', '대포병 탐지레이더'], warn);
+  const HL = makeHL(episode.highlight ?? ['K9', '천무', '장사정포', '대포병 탐지레이더'], warn, episode.autoHighlight !== false);
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const sec = frame / fps;

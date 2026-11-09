@@ -5,6 +5,7 @@ import {buildMissileSfx} from '../lib/missile';
 import {buildAirSfx} from '../lib/air';
 import {buildNavalSfx} from '../lib/naval';
 import {buildReconSfx} from '../lib/recon';
+import {buildMoneySfx} from '../ep10/plan';
 import {resultOn, RESULT_SEC} from '../lib/result';
 import {buildSfx, FPS, Sfx, videoSec} from '../lib/schedule';
 import {Episode, Timeline} from '../lib/types';
@@ -41,7 +42,8 @@ const DUCK = 0.5; // 말하는 동안 효과음·BGM 배율
 
 export const SoundTrack: React.FC<{ep: string; episode: Episode; timeline: Timeline}> = ({ep, episode, timeline}) => {
   const cues = [
-    ...((episode.scenario as string) === 'defense' ? buildDefenseSfx(episode as unknown as DefenseEpisode, timeline)
+    ...((episode.scenario as string) === 'money' ? buildMoneySfx(episode, timeline)
+      : (episode.scenario as string) === 'defense' ? buildDefenseSfx(episode as unknown as DefenseEpisode, timeline)
       : (episode.scenario as string) === 'infographic' ? buildInfographicSfx(episode as unknown as InfographicEpisode, timeline)
       : episode.scenario === 'armor' ? buildArmorSfx(episode, timeline)
       : episode.scenario === 'missile' ? buildMissileSfx(episode, timeline)

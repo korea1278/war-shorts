@@ -82,3 +82,8 @@ npx remotion still src/index.ts Short out/x.png --frame=300 \
 ## 정찰 공백 (EP09~, `"scenario": "recon"`)
 - `src/lib/recon.ts` + `ReconOverlay.tsx`: 1단계 감시망·전력 이탈 → 2단계 유투·위성 링크 단절 → 흑색 블라인드(`map.recon.blindZones`) → 사이오 위성 통과 때만 블라인드 해제. 큐는 `map.recon.*Cue`
 - `"exports": {"audio", "subtitles"}`: 지정 경로로 나레이션·자막 JSON을 내보내고 Artifacts에 첨부
+
+## 돈의 대결 인포그래픽 (EP10~, `"scenario": "money"`)
+- 컴포지션 `ep10-money-war` · 1080x1920 · `src/ep10/MoneyWar.tsx`·`plan.ts`: 동전 탑(0부터 같은 축), 전력 양산 라인, 예산 막대, 구형 미그기, 핵
+- `"singleTake": true`: 대본 전체를 한 번에 합성(`/with-timestamps`)해 문장 이어 붙임의 어색함을 없애고, 자막은 글자별 실제 발음 시각에 맞춤. `subs`와 같은 개수로 `saySubs`(발음 표기)를 씀. 목소리 값은 `voiceSettings`로 에피소드별 지정
+- `"autoHighlight": false`: 숫자 자동 강조를 끄고 `highlight`·`warn` 단어만 강조

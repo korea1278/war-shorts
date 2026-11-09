@@ -8,6 +8,7 @@ import {QH, QW} from './ep05/layout';
 import {InfographicEpisode, InfographicProps, Mosaic} from './ep05/types';
 import {MissileDefense} from './ep06/MissileDefense';
 import {DefenseEpisode, DefenseProps} from './ep06/types';
+import {MoneyWar} from './ep10/MoneyWar';
 
 const calc: CalculateMetadataFunction<ShortProps> = async ({props}) => {
   const [episode, timeline] = await Promise.all([
@@ -73,6 +74,17 @@ export const Root: React.FC = () => (
       durationInFrames={35 * FPS}
       defaultProps={{ep: 'ep06-missile-defense'} as DefenseProps}
       calculateMetadata={calcDefense}
+    />
+    {/* EP10 국방비 vs 북한 국민총소득: 1080x1920 · 30fps */}
+    <Composition
+      id="ep10-money-war"
+      component={MoneyWar}
+      width={1080}
+      height={1920}
+      fps={FPS}
+      durationInFrames={60 * FPS}
+      defaultProps={{ep: 'ep10-defense-budget'} as InfographicProps}
+      calculateMetadata={calcInfographic}
     />
   </>
 );

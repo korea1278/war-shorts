@@ -123,6 +123,138 @@ def weight(chunk):
     return len(s) - digits + digits * 1.3 + 0.6
 
 
+def tts_elevenlabs_timed(text, voice, settings):
+    """한 번에 통째로 낭독(문장 이어붙임 없음) + 글자별 실제 발음 시각."""
+    import requests
+    key = os.environ["ELEVENLABS_API_KEY"]
+    model = os.environ.get("ELEVENLABS_MODEL") or "eleven_multilingual_v2"
+    body = {"text": text, "model_id": model, "voice_settings": settings}
+    for attempt in range(4):
+        r = requests.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}/with-timestamps",
+                          params={"output_format": "mp3_44100_128"},
+                          headers={"xi-api-key": key, "Content-Type": "application/json"},
+                          json=body, timeout=300)
+        if r.status_code < 400:
+            return r.json()
+        print(f"  일레븐랩스 오류 {r.status_code}: {r.text[:200]}")
+        if r.status_code in (401, 402, 403):
+            raise RuntimeError(f"일레븐랩스 인증/크레딧 오류 {r.status_code}")
+    raise RuntimeError("일레븐랩스 실패")
+
+
+def single_take(ep, data, out, tdir, engine, voice, strict):
+    """EP10~ "singleTake": 대본 전체를 한 호흡으로 합성 → 문장 경계 어색함 제거, 자막은 실제 글자 발음 시각에 맞춤."""
+    lines = data["script"]
+    says = [l.get("say") or l["t"] for l in lines]
+    text = " ".join(says)
+    settings = data.get("voiceSettings") or VOICE_SETTINGS
+    sig = hashlib.sha1(json.dumps([engine, voice, text, settings], ensure_ascii=False).encode()).hexdigest()[:10]
+    cache = tdir / f"single_{sig}.json"
+    if cache.exists():
+        res = json.loads(cache.read_text(encoding="utf-8"))
+    elif engine == "elevenlabs":
+        print(f"  단일 낭독 합성: {len(text)}자")
+        try:
+            res = tts_elevenlabs_timed(text, voice, settings)
+        except Exception as e:
+            sys.exit(f"❌ 일레븐랩스 실패: {e}")
+        cache.write_text(json.dumps(res), encoding="utf-8")
+    else:
+        tmp = tdir / "_raw.mp3"
+        (tts_edge if engine == "edge" else tts_mock)(text, tmp)
+        d = duration(tmp)
+        k = d / len(text)
+        res = {"audio_base64": base64.b64encode(tmp.read_bytes()).decode(),
+               "alignment": {"characters": list(text),
+                             "character_start_times_seconds": [i * k for i in range(len(text))],
+                             "character_end_times_seconds": [(i + 1) * k for i in range(len(text))]}}
+    raw = tdir / "_single.mp3"
+    raw.write_bytes(base64.b64decode(res["audio_base64"]))
+    al = res["alignment"]
+    chars, st, en = al["characters"], al["character_start_times_seconds"], al["character_end_times_seconds"]
+    # 공백을 뺀 글자 기준으로 대본 위치 ↔ 발음 시각 연결
+    idx = [i for i, c in enumerate(chars) if not c.isspace()]
+    aligned = "".join(chars[i] for i in idx)
+    plain = re.sub(r"\s", "", text)
+    if aligned != plain:
+        sys.exit(f"❌ 글자 정렬 불일치: 대본 {len(plain)}자 / 음성 {len(aligned)}자")
+    cut = max(0.0, st[idx[0]] - 0.02)
+    end_cut = min(duration(raw), en[idx[-1]] + 0.18)   # 끝 음 잔향은 남김
+    speech = end_cut - cut
+    total = LEAD + speech
+    limit = float(data.get("maxNarrationSec", 57.5))
+    tempo = min(1.25, total / limit) if total > limit else 1.0
+    if tempo != 1.0:
+        print(f"  길이 {total:.1f}초 > {limit}초 → 속도 x{tempo:.3f}")
+    af = f"atrim=start={cut}:end={end_cut},asetpts=PTS-STARTPTS,afade=t=in:d=0.01,afade=t=out:st={max(0, speech - 0.05)}:d=0.05"
+    af += f",atempo={tempo:.4f}" if tempo != 1.0 else ""
+    af += f",adelay={int(LEAD * 1000)}:all=1"
+    sh("ffmpeg", "-v", "error", "-y", "-i", str(raw), "-af", af, "-ar", "44100", "-ac", "1", "-b:a", "192k", str(out / "narration.mp3"))
+    at = lambda sec: LEAD + (sec - cut) / tempo
+
+    pos, sentences, chunks, phase2 = 0, [], [], None
+    squash = lambda x: re.sub(r"\s", "", x)
+    for i, line in enumerate(lines):
+        say_parts = line.get("saySubs") or [says[i]]
+        cs = line.get("subs") or [line["t"]]
+        if len(cs) != len(say_parts) or squash("".join(say_parts)) != squash(says[i]):
+            sys.exit(f"[오류] {i + 1}번 문장 subs/saySubs가 맞지 않습니다")
+        if squash("".join(cs)) != squash(line["t"]):
+            sys.exit(f"[오류] {i + 1}번 문장 subs를 이어 붙인 글자가 t와 다릅니다: {cs}")
+        s0 = pos
+        for c, part in zip(cs, say_parts):
+            n = len(squash(part))
+            chunks.append({"start": round(at(st[idx[pos]]), 3), "end": round(at(en[idx[pos + n - 1]]), 3), "text": c, "sentence": i})
+            pos += n
+        a, b = at(st[idx[s0]]), at(en[idx[pos - 1]])
+        if line.get("phase2") and phase2 is None:
+            phase2 = a
+        sentences.append({"i": i, "start": round(a, 3), "end": round(b, 3), "text": line["t"]})
+    t = sentences[-1]["end"]
+    write_outputs(ep, out, tdir, data, engine, voice, tempo, t, phase2, sentences, chunks)
+
+
+def write_outputs(ep, out, tdir, data, engine, voice, tempo, t, phase2, sentences, chunks):
+    # 문장 사이 쉼에도 직전 자막을 유지
+    for a, b in zip(chunks, chunks[1:]):
+        a["end"] = b["start"]
+    chunks[-1]["end"] = round(chunks[-1]["end"] + 0.4, 3)
+    for c in chunks:
+        c["startFrame"] = round(c["start"] * 30)
+        c["endFrame"] = round(c["end"] * 30)
+
+    audio_sec = duration(out / "narration.mp3")
+    tail = float(data.get("tailSec", 1.5))
+    frames = math.ceil(audio_sec * 30) + round(tail * 30)   # Math.ceil(audioDuration*30) + 45 (여운 1.5초 뒤 칼종료)
+    tl = {"engine": engine, "voice": voice if engine == "elevenlabs" else None, "tempo": round(tempo, 4),
+          "duration": round(t, 3), "audioSec": round(audio_sec, 3), "tailSec": tail,
+          "durationInFrames": frames, "videoSec": round(frames / 30, 3),
+          "phase2At": round(phase2 if phase2 is not None else 26.0, 3),
+          "sentences": sentences, "chunks": chunks}
+    (out / "timeline.json").write_text(json.dumps(tl, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    def ts(x):
+        h, m, s = int(x // 3600), int(x % 3600 // 60), x % 60
+        return f"{h:02d}:{m:02d}:{s:06.3f}".replace(".", ",")
+    srt = "\n".join(f"{n}\n{ts(c['start'])} --> {ts(c['end'])}\n{c['text']}\n" for n, c in enumerate(chunks, 1))
+    (out / f"{ep}.srt").write_text(srt, encoding="utf-8")
+
+    # 지시서 지정 경로로 내보내기 (episode.json "exports": {"audio": 경로, "subtitles": 경로})
+    exports = data.get("exports") or {}
+    if exports.get("audio"):
+        Path(exports["audio"]).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(out / "narration.mp3", exports["audio"])
+    if exports.get("subtitles"):
+        Path(exports["subtitles"]).parent.mkdir(parents=True, exist_ok=True)
+        Path(exports["subtitles"]).write_text(json.dumps(
+            [{"start": c["start"], "end": c["end"], "text": c["text"]} for c in chunks], ensure_ascii=False, indent=1), encoding="utf-8")
+
+    for f in tdir.glob("_*"):
+        f.unlink()
+    print(f"영상 길이: {frames}프레임 = {frames / 30:.2f}초 (오디오 {audio_sec:.2f}초 + 여운 {tail}초)")
+    print(f"완료: 나레이션 {t:.1f}초 · 전환 {tl['phase2At']}초 · 자막 {len(chunks)}개 · 엔진 {engine}")
+
+
 def main(ep, mock=False):
     src = ROOT / "episodes" / ep / "episode.json"
     data = json.loads(src.read_text(encoding="utf-8"))
@@ -139,6 +271,8 @@ def main(ep, mock=False):
     if strict and engine != "elevenlabs":
         sys.exit("❌ ELEVENLABS_API_KEY가 없습니다 — 저장소 Settings > Secrets > Actions에 등록하세요 (TTS_STRICT)")
     print(f"TTS 엔진: {engine} · 목소리 {voice} · {VOICE_SETTINGS}")
+    if data.get("singleTake"):
+        return single_take(ep, data, out, tdir, engine, voice, strict)
 
     lines = data["script"]
     says = [l.get("say") or l["t"] for l in lines]
@@ -222,44 +356,7 @@ def main(ep, mock=False):
             chunks.append({"start": round(acc, 3), "end": round(acc + cd, 3), "text": c, "sentence": i})
             acc += cd
         t = en + (gaps[i] / tempo if i < len(lines) - 1 else 0)
-    # 문장 사이 쉼에도 직전 자막을 유지
-    for a, b in zip(chunks, chunks[1:]):
-        a["end"] = b["start"]
-    chunks[-1]["end"] = round(chunks[-1]["end"] + 0.4, 3)
-    for c in chunks:
-        c["startFrame"] = round(c["start"] * 30)
-        c["endFrame"] = round(c["end"] * 30)
-
-    audio_sec = duration(out / "narration.mp3")
-    tail = float(data.get("tailSec", 1.5))
-    frames = math.ceil(audio_sec * 30) + round(tail * 30)   # Math.ceil(audioDuration*30) + 45 (여운 1.5초 뒤 칼종료)
-    tl = {"engine": engine, "voice": voice if engine == "elevenlabs" else None, "tempo": round(tempo, 4),
-          "duration": round(t, 3), "audioSec": round(audio_sec, 3), "tailSec": tail,
-          "durationInFrames": frames, "videoSec": round(frames / 30, 3),
-          "phase2At": round(phase2 if phase2 is not None else 26.0, 3),
-          "sentences": sentences, "chunks": chunks}
-    (out / "timeline.json").write_text(json.dumps(tl, ensure_ascii=False, indent=1), encoding="utf-8")
-
-    def ts(x):
-        h, m, s = int(x // 3600), int(x % 3600 // 60), x % 60
-        return f"{h:02d}:{m:02d}:{s:06.3f}".replace(".", ",")
-    srt = "\n".join(f"{n}\n{ts(c['start'])} --> {ts(c['end'])}\n{c['text']}\n" for n, c in enumerate(chunks, 1))
-    (out / f"{ep}.srt").write_text(srt, encoding="utf-8")
-
-    # 지시서 지정 경로로 내보내기 (episode.json "exports": {"audio": 경로, "subtitles": 경로})
-    exports = data.get("exports") or {}
-    if exports.get("audio"):
-        Path(exports["audio"]).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(out / "narration.mp3", exports["audio"])
-    if exports.get("subtitles"):
-        Path(exports["subtitles"]).parent.mkdir(parents=True, exist_ok=True)
-        Path(exports["subtitles"]).write_text(json.dumps(
-            [{"start": c["start"], "end": c["end"], "text": c["text"]} for c in chunks], ensure_ascii=False, indent=1), encoding="utf-8")
-
-    for f in tdir.glob("_*"):
-        f.unlink()
-    print(f"영상 길이: {frames}프레임 = {frames / 30:.2f}초 (오디오 {audio_sec:.2f}초 + 여운 {tail}초)")
-    print(f"완료: 나레이션 {t:.1f}초 · 전환 {tl['phase2At']}초 · 자막 {len(chunks)}개 · 엔진 {engine}")
+    write_outputs(ep, out, tdir, data, engine, voice, tempo, t, phase2, sentences, chunks)
 
 
 if __name__ == "__main__":

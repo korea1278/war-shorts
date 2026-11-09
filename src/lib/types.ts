@@ -123,7 +123,8 @@ export type Episode = {
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
   disclaimer?: string; // 자막 아래 작은 안내 문구 (기본: 가상 시나리오 안내)
   highlight?: string[]; // 자막 노랑 강조 단어 (숫자는 자동)
-  highlightColor?: string; // 강조 노랑 색 (EP07: #FFE500, 기본 #FFD000)
+  highlightColor?: string;
+  autoHighlight?: boolean; // false면 숫자 자동 강조 끄기 (EP10~)
   warn?: string[]; // 자막 경고 레드(#FF3B30) 단어 (EP07~)
   stats: {phase1: Stat[]; phase2: Stat[]; vs?: boolean; vsPhase2?: boolean};
   map: {
