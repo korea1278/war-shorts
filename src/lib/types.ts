@@ -110,6 +110,7 @@ export type Episode = {
   disclaimer?: string; // 자막 아래 작은 안내 문구 (기본: 가상 시나리오 안내)
   subtitleBottomY?: number; // EP12~: 자막 박스 바닥 Y (예 1478 = bottom 23%), 아래 20%는 비움
   ctaBottomY?: number; // EP12~: CTA 뱃지 바닥 Y (자막 위로 올림)
+  ctaHeadline?: boolean; // CTA 뱃지 안내 문구. 표준(subtitleBottomY 사용)에선 기본 끔 — 자막과 같은 문장 중복 방지
   highlight?: string[]; // 자막 노랑 강조 단어 (숫자는 자동)
   highlightColor?: string; // 강조 노랑 색 (EP07: #FFE500, 기본 #FFD000)
   warn?: string[]; // 자막 경고 레드(#FF3B30) 단어 (EP07~)

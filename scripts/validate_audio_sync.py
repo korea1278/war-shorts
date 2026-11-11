@@ -30,6 +30,7 @@ MAX_LEN_DIFF = 2.0        # 영상 길이 - 오디오 길이
 MAX_END_DIFF = 1.0        # 마지막 자막 끝 vs 실제 음성 끝
 MAX_WHISPER_END_DIFF = 1.2
 MAX_SENT_OFFSET = 0.8     # 문장 시작 vs Whisper 단어 시작 (중앙값)
+STD_TOL = 0.5   # docs/SHORTS_STANDARD.md 2항: 자막 start/end 오차 ±0.5초
 MIN_COVERAGE = 0.9        # 음성 단어 중 자막이 떠 있는 비율
 
 
@@ -107,6 +108,13 @@ def main():
     ep = json.loads((d / "episode.json").read_text(encoding="utf-8"))
     narr = d / "narration.mp3"
     R = Report()
+    # docs/SHORTS_STANDARD.md: 단일 파일 모드면 자막 싱크 허용 오차 ±0.5초
+    std = tl.get("mode") == "single"
+    end_tol = STD_TOL if std else MAX_END_DIFF
+    wend_tol = STD_TOL if std else MAX_WHISPER_END_DIFF
+    sent_tol = STD_TOL if std else MAX_SENT_OFFSET
+    if std:
+        R.info("표준 규격", f"단일 TTS 파일 · 정렬 {tl.get('alignment')} · 싱크 허용 ±{STD_TOL}초")
 
     audio = ffprobe_dur(narr)
     frames = tl.get("durationInFrames")
@@ -152,8 +160,12 @@ def main():
     R.check("자막이 영상 안에서 끝남", last_end <= video_sec, f"마지막 자막 끝 {last_end:.2f}초 ≤ 영상 {video_sec:.2f}초")
 
     # 3) 자막 싱크: 마지막 자막 endFrame vs 실제 음성 끝
-    R.check("마지막 자막 종료 vs 음성 종료", abs(last_end - speech_end) <= MAX_END_DIFF,
-            f"자막 {last_end:.2f}초 / 음성 {speech_end:.2f}초 (차 {last_end - speech_end:+.2f}초, 기준 ±{MAX_END_DIFF}초)")
+    R.check("마지막 자막 종료 vs 음성 종료", abs(last_end - speech_end) <= end_tol,
+            f"자막 {last_end:.2f}초 / 음성 {speech_end:.2f}초 (차 {last_end - speech_end:+.2f}초, 기준 ±{end_tol}초)")
+    if std:
+        nar = (tl.get("audioSec") or audio)
+        R.check("나레이션 길이 55~58초 (표준)", 55.0 - 0.05 <= nar <= 58.0 + 0.05, f"{nar:.2f}초",
+                warn_only=tl.get("engine") != "elevenlabs")
 
     # 4) Whisper 단어 타임스탬프 대조
     words = None
@@ -166,17 +178,21 @@ def main():
             R.check("Whisper 대조 실행", False, f"실패: {e}", warn_only=not a.require_whisper)
     if words:
         w_first, w_last = words[0][0], words[-1][1]
-        R.check("첫 단어 vs 첫 자막", abs(w_first - first_start) <= MAX_END_DIFF,
+        R.check("첫 단어 vs 첫 자막", abs(w_first - first_start) <= end_tol,
                 f"음성 {w_first:.2f}초 / 자막 {first_start:.2f}초")
-        R.check("마지막 단어 vs 마지막 자막", abs(last_end - w_last) <= MAX_WHISPER_END_DIFF,
-                f"음성 {w_last:.2f}초 / 자막 {last_end:.2f}초 (차 {last_end - w_last:+.2f}초, 기준 ±{MAX_WHISPER_END_DIFF}초)")
+        R.check("마지막 단어 vs 마지막 자막", abs(last_end - w_last) <= wend_tol,
+                f"음성 {w_last:.2f}초 / 자막 {last_end:.2f}초 (차 {last_end - w_last:+.2f}초, 기준 ±{wend_tol}초)")
         mids = [(s + e) / 2 for s, e, _ in words]
         cov = sum(any(c["start"] - 0.1 <= m <= c["end"] + 0.1 for c in chunks) for m in mids) / len(mids)
         R.check("자막 노출 커버리지", cov >= MIN_COVERAGE, f"음성 단어 {len(words)}개 중 {cov * 100:.0f}%에 자막 표시 (기준 {MIN_COVERAGE * 100:.0f}%)")
         starts = [w[0] for w in words]
         offs = sorted(min(abs(s["start"] - x) for x in starts) for s in tl["sentences"])
         med = offs[len(offs) // 2]
-        R.check("문장 시작 싱크 (중앙값)", med <= MAX_SENT_OFFSET, f"{med:.2f}초 (최대 {offs[-1]:.2f}초, 기준 {MAX_SENT_OFFSET}초)")
+        R.check("문장 시작 싱크 (중앙값)", med <= sent_tol, f"{med:.2f}초 (최대 {offs[-1]:.2f}초, 기준 {sent_tol}초)")
+        if std:
+            co = sorted(min(abs(c["start"] - x) for x in starts) for c in chunks)
+            cmed = co[len(co) // 2]
+            R.check("자막 시작 싱크 (중앙값, 표준 ±0.5초)", cmed <= STD_TOL, f"{cmed:.2f}초 (최대 {co[-1]:.2f}초)")
         say = "".join(l.get("say") or l["t"] for l in ep["script"])
         sim = difflib.SequenceMatcher(None, norm_ko(say), norm_ko(text)).ratio()
         R.check("받아쓰기 유사도 (tiny 모델 참고값)", sim >= 0.5, f"{sim * 100:.0f}%", warn_only=True)

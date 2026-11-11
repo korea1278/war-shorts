@@ -45,6 +45,8 @@ export const CtaOverlay: React.FC<{episode: Episode; timeline: Timeline}> = ({ep
   const likePop = spring({frame: f - likeAt, fps: FPS, config: {damping: 8, stiffness: 200}});
   const liked = f >= likeAt;
   const glow = `0 0 0 ${3 + 5 * pulse}px rgba(255,31,61,0.45), 0 0 0 ${10 + 9 * pulse}px rgba(255,31,61,0.18), 0 8px 0 #000`;
+  // 표준(docs/SHORTS_STANDARD.md 2항): 자막이 같은 문장을 읽는 동안 뱃지에 또 쓰지 않음 → 버튼만
+  const headline = episode.ctaHeadline ?? !episode.subtitleBottomY;
   const btn = {
     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 30px 13px', borderRadius: 999,
     fontSize: 46, fontWeight: 900, border: '4px solid #000',
@@ -61,11 +63,13 @@ export const CtaOverlay: React.FC<{episode: Episode; timeline: Timeline}> = ({ep
           padding: '18px 34px 22px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         }}
       >
-        <div style={{display: 'flex', alignItems: 'center', gap: 14, fontSize: 44, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap',
-          WebkitTextStroke: '2px #000', paintOrder: 'stroke fill'}}>
-          <Bell size={54} ring={ring} />
-          다음 시뮬레이션이 궁금하다면?
-        </div>
+        {headline && (
+          <div style={{display: 'flex', alignItems: 'center', gap: 14, fontSize: 44, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap',
+            WebkitTextStroke: '2px #000', paintOrder: 'stroke fill'}}>
+            <Bell size={54} ring={ring} />
+            다음 시뮬레이션이 궁금하다면?
+          </div>
+        )}
         <div style={{display: 'flex', gap: 22}}>
           <div style={{...btn, transform: `scale(${press})`, background: subscribed ? '#3a3f45' : RED, color: '#fff',
             boxShadow: subscribed ? 'none' : `0 0 0 ${2 + 4 * pulse}px rgba(255,255,255,0.35)`}}>

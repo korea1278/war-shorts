@@ -38,6 +38,7 @@ const SAFE_L = 48; // 좌측 여백
 const SAFE_R = Math.round(W * 0.15); // 우측 15% = 162px
 const SAFE_W = W - SAFE_L - SAFE_R; // 870px
 
+const MIN_FS = 110; // docs/SHORTS_STANDARD.md 3항 (110~125px)
 const RED = '#FF3B30';
 const YELLOW = '#FFE500';
 
@@ -66,7 +67,11 @@ const FitLine: React.FC<{
       if (w > maxW) {
         const r = maxW / w;
         if (r >= 0.8) setFit({sx: r, fs: size});
-        else setFit({sx: 0.8, fs: Math.floor((size * r) / 0.8)});
+        else {
+          // 표준 3항: 헤드카피 110~125px 유지 — 110px 아래로는 줄이지 않고 가로 압축으로 맞춤
+          const fs = Math.max(MIN_FS, Math.floor((size * r) / 0.8));
+          setFit({sx: Math.min(1, maxW / ((w * fs) / size)), fs});
+        }
       }
       continueRender(h);
     });

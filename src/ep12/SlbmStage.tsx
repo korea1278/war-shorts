@@ -29,6 +29,7 @@ const proj = ([lon, lat]: LngLat | number[]): [number, number] => [212 + (lon - 
 
 /** 둥근 라벨 칩 */
 const Chip: React.FC<{x: number; y: number; text: string; color: string; size?: number; o?: number; anchor?: 'start' | 'middle'}> = ({x, y, text, color, size = 30, o = 1, anchor = 'middle'}) => {
+  if (!text) return null; // 빈 라벨 = 표시 안 함 (상단 카드·자막과 같은 글자 중복 방지)
   const w = text.length * size * 0.9 + 34;
   const x0 = anchor === 'middle' ? x - w / 2 : x;
   return (

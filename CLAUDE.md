@@ -3,6 +3,8 @@
 사용자는 PC방에서 작업한다. 로컬 설치를 요구하지 말고 렌더링은 모두 GitHub Actions(`쇼츠 만들기`)에서 한다.
 답변은 한국어로 한다.
 
+> **영구 표준 (2026-11-11~, 모든 쇼츠 강제): [`docs/SHORTS_STANDARD.md`](docs/SHORTS_STANDARD.md)를 작업 전에 먼저 읽을 것.** TTS는 전체 대본 1회 호출 단일 파일(문장별 생성·이어붙이기 금지), 쉼표 금지·100% 한글 낭독, 자막 bottom 23%(`subtitleBottomY: 1478`)·하단 20% 비움, 자막 싱크 ±0.5초, 썸네일 헤드카피 110~125px, frame 기반 결정론. 아래 내용과 다르면 표준이 우선.
+
 ## 규격
 - 1080x1920 · 30fps · 한국어 단일 버전
 - **영상 길이 = 나레이션 실제 길이 + 여운 1.5초** (2026-11-01, 고정 1800프레임 폐지). `prepare.py`가 `timeline.json`의 `durationInFrames`를 계산, `Root.tsx` calculateMetadata가 사용. 카메라 키프레임은 60초 기준으로 쓰고 실제 길이에 비율로 자동 맞춤
@@ -60,7 +62,7 @@
 
 ## 파이프라인
 - `pipeline/tiles.py`: Esri 위성 타일을 받아 모자이크 2장(z8 배경·z11 상세, 색 보정 포함)으로 합침 → `public/tiles/mosaic_*.jpg` + `mosaic.json` (캐시)
-- `pipeline/prepare.py`: TTS + 자막 타임라인 + SRT. **일레븐랩스 Minho `U1cJYS4EdbaHmfR7YzHd`**, eleven_multilingual_v2, stability 0.38 · similarity 0.82 · style 0.12 · speed 1.15 · speaker boost. Actions는 `TTS_STRICT=1` → 키가 없거나 실패하면 다른 목소리로 바꾸지 않고 중단. 문장별 앞뒤 무음은 잘라내고 쉼은 0.22초(물음표 뒤 0.38초)
+- `pipeline/prepare.py`: TTS + 자막 타임라인 + SRT. **(표준) 전체 대본 `/with-timestamps` 1회 호출 → 단일 파일, 글자 타임스탬프로 자막 동기화** · **일레븐랩스 Minho `U1cJYS4EdbaHmfR7YzHd`**, eleven_multilingual_v2, stability 0.38 · similarity 0.82 · style 0.12 · speed 1.15 · speaker boost. Actions는 `TTS_STRICT=1` → 키가 없거나 실패하면 다른 목소리로 바꾸지 않고 중단. 쉼은 대본의 마침표로만 (문장 사이 무음 삽입 없음, 2026-11-11 이전의 문장별 생성·0.22초 쉼 방식 폐지)
 - `scripts/validate_audio_sync.py`: 렌더 직전 검증(ffmpeg silencedetect + faster-whisper tiny) — 끝 무음 2초 이상, 영상-오디오 길이 차 0~2초 밖, 마지막 자막 끝 vs 음성 끝 ±1초, Whisper 단어 대조(마지막 단어 ±1.2초, 커버리지 90%, 문장 시작 중앙값 0.8초) 실패 시 렌더 중단. 렌더 후 `--video`로 MP4 길이 재확인
 - 믹싱: 나레이션 1.0, 효과음 전부 기존의 30%, BGM 0.11, 말하는 동안 효과음·BGM 50%로 덕킹 (`SoundTrack.tsx`)
 - 효과음: `public/sfx` 17종(war-docu와 같은 음원) + 합성 레이더 비프 `radar.mp3`, 큐는 `src/lib/schedule.ts`의 `buildSfx`
