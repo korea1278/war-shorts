@@ -87,3 +87,8 @@ npx remotion still src/index.ts Short out/x.png --frame=300 \
 - 컴포지션 `ep10-money-war` · 1080x1920 · `src/ep10/MoneyWar.tsx`·`plan.ts`: 동전 탑(0부터 같은 축), 전력 양산 라인, 예산 막대, 구형 미그기, 핵
 - `"singleTake": true`: 대본 전체를 한 번에 합성(`/with-timestamps`)해 문장 이어 붙임의 어색함을 없애고, 자막은 글자별 실제 발음 시각에 맞춤. `subs`와 같은 개수로 `saySubs`(발음 표기)를 씀. 목소리 값은 `voiceSettings`로 에피소드별 지정
 - `"autoHighlight": false`: 숫자 자동 강조를 끄고 `highlight`·`warn` 단어만 강조
+
+## 야간 침투 vs 열상 감시망 (EP11~, `"scenario": "infiltration"`)
+- `src/lib/infiltration.ts` + `InfiltrationOverlay.tsx`: 1단계 야간 암전 → 특수작전군 집결 점(`massBox`) → 11군단 핀·남하 화살표 → AN-2 저공·공기부양정·땅굴 세 갈래 침투선 → 2단계 녹색 야시경 전환(섬광·스캔라인) → TOD 부채꼴 스캔·포착 박스 → 열화상(점이 하얗게) → 무인 센서망 경보 파동 → 비호복합·방공포 화망 예광탄·격추. 모든 시각은 `map.infil.*Cue` 자막 큐(실제 발음 시각)에서 계산
+- **자막 세이프존 `"subtitleZone": "shorts23"` (EP11~, 사용자 지시 2026-11-11)**: 자막 바 바닥을 bottom 23%(Y 1478)에 고정(1줄 기준 Y 약 1380~1478), 우측 150px 마진, 출처 문구는 Y 1500, 하단 20%(Y 1536~)는 비움. CTA 바닥은 Y 1360(자막 바 위). 자막은 `Subtitles.tsx` 한 곳에서만 렌더링하고 상단 헤더에는 자막 문구를 다시 쓰지 않는다(EP10 헤더 훅 문구 중복 금지)
+- 대본 분량: Minho 1.15배속 단일 낭독 기준 약 490자 ≈ 57초 (280~340자는 약 40초밖에 안 됨)

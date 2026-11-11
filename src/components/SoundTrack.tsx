@@ -5,6 +5,7 @@ import {buildMissileSfx} from '../lib/missile';
 import {buildAirSfx} from '../lib/air';
 import {buildNavalSfx} from '../lib/naval';
 import {buildReconSfx} from '../lib/recon';
+import {buildInfilSfx} from '../lib/infiltration';
 import {buildMoneySfx} from '../ep10/plan';
 import {resultOn, RESULT_SEC} from '../lib/result';
 import {buildSfx, FPS, Sfx, videoSec} from '../lib/schedule';
@@ -48,6 +49,7 @@ export const SoundTrack: React.FC<{ep: string; episode: Episode; timeline: Timel
       : episode.scenario === 'armor' ? buildArmorSfx(episode, timeline)
       : episode.scenario === 'missile' ? buildMissileSfx(episode, timeline)
       : episode.scenario === 'naval' ? buildNavalSfx(episode, timeline)
+      : episode.scenario === 'infiltration' ? buildInfilSfx(episode, timeline)
       : episode.scenario === 'recon' ? buildReconSfx(episode, timeline)
       : episode.scenario === 'air' ? buildAirSfx(episode, timeline) : buildSfx(episode, timeline)),
     ...ctaSfx(episode, timeline),

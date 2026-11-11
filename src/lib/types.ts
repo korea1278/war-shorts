@@ -78,6 +78,22 @@ export type ReconMap = {
   gapCue: string; gapLabel: string;
 };
 
+/** 야간 침투 vs 열상 감시망 (EP11~) */
+export type InfilMap = {
+  corpsCue: string; corps: {pos: LngLat; label: string};
+  massCue: string; massBox: [number, number, number, number]; massCount: number; // [서,남,동,북] 침투 병력 점
+  routesCue: string;
+  airCue: string; an2Routes: LngLat[][]; airLabel: string;
+  seaCue: string; seaRoutes: LngLat[][]; seaLabel: string;
+  tunnelCue: string; tunnels: LngLat[]; tunnelLabel: string;
+  mdl: LngLat[]; // 군사분계선 (서→동)
+  todCue: string; tods: {pos: LngLat; bearing: number}[]; todKm: number; todLabel: string;
+  thermalCue: string; thermalLabel: string;
+  sensorCue: string; alarmCue: string; sensorLabel: string; alarmLabel: string;
+  aaCue: string; netCue: string; aaSites: LngLat[]; aaKm: number; aaLabel: string;
+  finalCue: string; finalLabel: string;
+};
+
 /** 끝 4초 결과 카드 */
 export type ResultData = {
   label: string;
@@ -117,7 +133,8 @@ export type Episode = {
   id: string;
   title: [string, string];
   script: {t: string; say?: string; phase2?: boolean; subs?: string[]}[];
-  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval' | 'recon';
+  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval' | 'recon' | 'infiltration';
+  subtitleZone?: 'shorts23'; // EP11~: 자막 바 바닥 bottom 23%(Y 1478), 하단 20%는 비움
   layout?: 'safe'; // EP04~: 모바일 Safe Area 규격 (상단 120~350·자막 1550~1720·우측 150px 마진)
   result?: ResultData; // 있으면 끝 4초 결과 카드 + 스탯 페이드아웃 + 지도 80% 딤
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
@@ -134,6 +151,7 @@ export type Episode = {
     air?: AirMap;
     naval?: NavalMap;
     recon?: ReconMap;
+    infil?: InfilMap;
     nkOrigins: LngLat[];
     targets: LngLat[];
     seoul: LngLat;

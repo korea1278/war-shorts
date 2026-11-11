@@ -17,6 +17,8 @@ import {buildNavalPlan} from '../lib/naval';
 import {drawNaval} from './NavalOverlay';
 import {buildReconPlan} from '../lib/recon';
 import {drawRecon} from './ReconOverlay';
+import {buildInfilPlan} from '../lib/infiltration';
+import {drawInfilNight, drawInfiltration} from './InfiltrationOverlay';
 
 type Assets = {layers: Mosaic[]; borders: {iso: string; rings: Float64Array[]}[]};
 
@@ -100,6 +102,8 @@ export const MapCanvas: React.FC<{episode: Episode; timeline: Timeline; offline:
     ctx.fillStyle = '#0b1016';
     ctx.fillRect(0, 0, MAP_W, MAP_H);
     if (assets.layers.length) drawGround(ctx, cam, assets.layers);
+    // EP11 야간 침투: 지형 위·국경 아래에 암전(2단계는 녹색 야시경)
+    if (episode.scenario === 'infiltration') drawInfilNight(ctx, sec, buildInfilPlan(episode, timeline));
 
     // 국경 발광 (은은한 맥동) — 북한 빨강, 한국 파랑
     const pulse = 0.85 + 0.15 * Math.sin(sec * 3.2);
@@ -127,6 +131,7 @@ export const MapCanvas: React.FC<{episode: Episode; timeline: Timeline; offline:
     if (episode.scenario === 'armor') drawArmor(ctx, sec, episode, buildArmorPlan(episode, timeline), pp);
     else if (episode.scenario === 'air') drawAir(ctx, sec, episode, buildAirPlan(episode, timeline), pp);
     else if (episode.scenario === 'naval') drawNaval(ctx, sec, episode, buildNavalPlan(episode, timeline), pp);
+    else if (episode.scenario === 'infiltration') drawInfiltration(ctx, sec, episode, buildInfilPlan(episode, timeline), pp);
     else if (episode.scenario === 'recon') drawRecon(ctx, sec, episode, buildReconPlan(episode, timeline), pp);
     else if (episode.scenario === 'missile') drawMissile(ctx, sec, episode, buildMissilePlan(episode, timeline), pp);
     else drawArtillery(ctx, sec, episode, buildPlan(episode, timeline), pp);

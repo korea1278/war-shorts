@@ -51,7 +51,10 @@ export const CtaOverlay: React.FC<{episode: Episode; timeline: Timeline}> = ({ep
   } as const;
   return (
     // safe 레이아웃(EP04~): 결과 카드(480~1250)와 자막(1550~) 사이, 바닥이 Y 1535에 오도록 · 우측 150px 마진 안
-    <div style={episode.layout === 'safe'
+    <div style={episode.subtitleZone === 'shorts23'
+      // shorts23(EP11~): 자막 바(Y 1380~1478) 바로 위, 바닥 Y 1360
+      ? {position: 'absolute', left: 40, width: 890, bottom: 1920 - 1360, display: 'flex', justifyContent: 'center', opacity}
+      : episode.layout === 'safe'
       ? {position: 'absolute', left: 40, width: 890, bottom: 1920 - 1535, display: 'flex', justifyContent: 'center', opacity}
       : {position: 'absolute', left: 0, top: 1236, width: 1080, display: 'flex', justifyContent: 'center', opacity}}>
       <div
