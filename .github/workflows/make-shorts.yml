@@ -63,11 +63,14 @@ jobs:
         with:
           path: public/ep/${{ inputs.episode }}/tts
           key: tts-${{ inputs.episode }}-${{ hashFiles(format('episodes/{0}/episode.json', inputs.episode), 'pipeline/prepare.py') }}
+          # 코드만 바뀐 경우에도 이전 TTS 재사용 (파일명 full_<해시>가 대본·목소리·설정 해시라 대본이 같을 때만 쓰임)
+          restore-keys: |
+            tts-${{ inputs.episode }}-
       - name: 나레이션 + 자막 타임라인
         run: python pipeline/prepare.py "$EP"
       # 검증·렌더가 실패해도 산 TTS는 바로 저장 → 다시 실행할 때 크레딧 재사용
       - name: 나레이션 캐시 저장
-        if: steps.ttscache.outputs.cache-hit != 'true'
+        if: steps.ttscache.outputs.cache-hit != 'true' && always()
         uses: actions/cache/save@v4
         with:
           path: public/ep/${{ inputs.episode }}/tts

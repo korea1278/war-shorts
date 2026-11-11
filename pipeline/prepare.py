@@ -272,7 +272,7 @@ def main(ep, mock=False):
     # 다음 자막이 시작할 때까지 직전 자막 유지 (쉼에서 빈 화면 없음)
     for x, y in zip(chunks, chunks[1:]):
         x["end"] = y["start"]
-    chunks[-1]["end"] = round(chunks[-1]["end"] + 0.25, 3)
+    # 마지막 자막은 마지막 글자 발화 끝에서 바로 닫음 (여유를 더하면 ±0.5초 기준을 넘음)
     for c in chunks:
         c["startFrame"] = round(c["start"] * 30)
         c["endFrame"] = round(c["end"] * 30)
