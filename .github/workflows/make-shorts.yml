@@ -100,6 +100,9 @@ jobs:
           ffmpeg -y -v error -i "out/$EP.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 192k out/final.mp4
           mv out/final.mp4 "out/$EP.mp4"
           cp "public/ep/$EP/$EP.srt" out/
+          # 썸네일 PNG(public/thumbnails/shorts_epNN.png)·단일 나레이션 MP3도 같이 첨부
+          cp "public/thumbnails/shorts_${EP%%-*}.png" out/ 2>/dev/null || true
+          cp "public/ep/$EP/narration.mp3" "out/shorts_${EP%%-*}.mp3"
           # 유튜브 업로드용 메타데이터 (dist/epNN_metadata.txt)가 있으면 같이 첨부
           cp "dist/${EP%%-*}_metadata.txt" out/ 2>/dev/null || true
           # 렌더 후 검증: MP4 길이가 예정 길이와 같은지
@@ -130,6 +133,8 @@ jobs:
             out/*.jpg
             out/validate_*.md
             out/*_metadata.txt
+            out/shorts_*.png
+            out/shorts_*.mp3
           retention-days: 3
 
       - name: 실패 시 점검 자료 올리기 (나레이션·타임라인·검증 결과)

@@ -1,5 +1,8 @@
 import React from 'react';
-import {CalculateMetadataFunction, Composition, staticFile} from 'remotion';
+import {CalculateMetadataFunction, Composition, Still, staticFile} from 'remotion';
+import {EP12_THUMB, ShortsThumbnail} from './components/ShortsThumbnail';
+import {SlbmProps, SlbmShort} from './ep12/SlbmShort';
+import {SlbmEpisode} from './ep12/plan';
 import {DEFAULT_SEC, FPS, videoSec} from './lib/schedule';
 import {Episode, ShortProps, Timeline} from './lib/types';
 import {Short} from './Short';
@@ -40,6 +43,16 @@ const calcDefense: CalculateMetadataFunction<DefenseProps> = async ({props}) => 
   return {props: {...props, episode, timeline, geo, mosaics}, durationInFrames: Math.round(videoSec(timeline) * FPS)};
 };
 
+// EP12 SLBM 수중 발사 (1080x1920): 에피소드·타임라인·국경을 미리 읽음
+const calcSlbm: CalculateMetadataFunction<SlbmProps> = async ({props}) => {
+  const [episode, timeline, geo] = await Promise.all([
+    fetch(staticFile(`ep/${props.ep}/episode.json`)).then((r) => r.json() as Promise<SlbmEpisode>),
+    fetch(staticFile(`ep/${props.ep}/timeline.json`)).then((r) => r.json() as Promise<Timeline>),
+    fetch(staticFile('geo/korea.json')).then((r) => r.json()),
+  ]);
+  return {props: {...props, episode, timeline, geo}, durationInFrames: Math.round(videoSec(timeline) * FPS)};
+};
+
 export const Root: React.FC = () => (
   <>
     <Composition
@@ -74,5 +87,18 @@ export const Root: React.FC = () => (
       defaultProps={{ep: 'ep06-missile-defense'} as DefenseProps}
       calculateMetadata={calcDefense}
     />
+    {/* EP12 한국 해군 3,000톤급 잠수함 SLBM: 1080x1920 · 30fps · 길이 = 나레이션 + 1.5초 · Frame 0 썸네일 */}
+    <Composition
+      id="ep12-slbm"
+      component={SlbmShort}
+      width={1080}
+      height={1920}
+      fps={FPS}
+      durationInFrames={58 * FPS}
+      defaultProps={{ep: 'ep12-slbm'} as SlbmProps}
+      calculateMetadata={calcSlbm}
+    />
+    {/* 쇼츠 썸네일 (EP12~): 1080x1920 단일 프레임 → public/thumbnails/shorts_epNN.png */}
+    <Still id="shorts-thumbnail" component={ShortsThumbnail} width={1080} height={1920} defaultProps={{copy: EP12_THUMB}} />
   </>
 );

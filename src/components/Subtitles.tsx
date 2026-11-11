@@ -38,6 +38,35 @@ export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({tim
   const active = fr.map(([sf, ef], i) => (sf <= frame && frame < ef ? i : -1)).filter((i) => i >= 0);
   const c = active.length ? timeline.chunks[active[active.length - 1]] : undefined;
   const cStart = c ? fr[timeline.chunks.indexOf(c)][0] / fps : 0;
+  if (episode.layout === 'safe' && episode.subtitleBottomY) {
+    // EP12~: 자막 박스 바닥을 subtitleBottomY(1478 = bottom 23%)에 고정하고 위로 자람.
+    // 그 아래 안내 문구만 작게 두고, 최하단 20%(Y 1536~)는 아무것도 그리지 않음 (쇼츠 앱 UI 영역)
+    const B = episode.subtitleBottomY;
+    const W = 1080 - 40 - 150;
+    const len = c ? c.text.length : 1;
+    const fs = Math.max(48, Math.min(66, Math.floor((W - 60) / (len * 0.97))));
+    const k = c ? interpolate(sec, [cStart, cStart + 0.1], [0, 1], {extrapolateRight: 'clamp'}) : 0;
+    return (
+      <>
+        <div style={{position: 'absolute', left: 0, top: B - 150, width: 1080, height: 1920 - (B - 150), background: 'linear-gradient(rgba(5,7,10,0) 0%, #05070a 35%, #05070a 100%)'}} />
+        {c && (
+          <div style={{position: 'absolute', left: 40, width: W, bottom: 1920 - B, display: 'flex', justifyContent: 'center'}}>
+            <div style={{
+              background: 'rgba(0,0,0,0.66)', borderRadius: 18, padding: '10px 26px 14px', maxWidth: W, boxSizing: 'border-box',
+              transform: `scale(${0.94 + 0.06 * k})`, transformOrigin: '50% 100%', opacity: 0.5 + 0.5 * k,
+              fontSize: fs, lineHeight: 1.12, fontWeight: 900, color: '#fff', textAlign: 'center',
+              wordBreak: 'keep-all', whiteSpace: 'pre-wrap', WebkitTextStroke: '10px #000', paintOrder: 'stroke fill',
+            }}>
+              {renderText(c.text, HL, warn, yellow)}
+            </div>
+          </div>
+        )}
+        <div style={{position: 'absolute', top: B + 12, left: 40, width: W, textAlign: 'center', fontSize: 22, color: 'rgba(255,255,255,0.45)', fontWeight: 900}}>
+          {episode.disclaimer ?? '※ 공개 자료를 바탕으로 한 가상 시나리오입니다'}
+        </div>
+      </>
+    );
+  }
   if (episode.layout === 'safe') {
     // Safe Area: 자막은 Y 1550~1720 고정, 우측 150px 마진 (유튜브 좋아요·공유 버튼 영역 침범 금지)
     const W = 1080 - 40 - 150;

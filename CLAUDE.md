@@ -77,3 +77,9 @@ python3 pipeline/tiles.py --fake && python3 pipeline/prepare.py ep01-artillery -
 npx remotion still src/index.ts Short out/x.png --frame=300 \
   --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell
 ```
+
+## SLBM 수중 발사 (EP12~, `"scenario": "slbm"`, 컴포지션 `ep12-slbm` · 1080x1920)
+- `src/ep12/`: `plan.ts`(문장 `scene` 키 `intro/aip/stealth/vls/launch/breach/track/impact/outro/cta` + 큐 `slbm.launchCue/igniteCue/impactCue/stampCue`), `SlbmStage.tsx`(Y 470~1390 SVG 무대: 심해 단면·소나 핑·AIP 패널·초계기/위성 "탐지 실패"·VLS 6문 엑스레이 줌 → 콜드런치 사출·수면 돌파·점화 → 전술 지도 포물선·표적 타격·결론 직인), `sfx.ts`
+- 자막 위치 옵션 `subtitleBottomY`(EP12: 1478 = bottom 23%, 박스가 위로 자람, 최하단 20%는 비움) · CTA 위치 `ctaBottomY`(EP12: 1360)
+- 썸네일: `src/components/ShortsThumbnail.tsx` → Still `shorts-thumbnail` → `public/thumbnails/shorts_epNN.png` (Artifacts에 같이 첨부), 영상 Frame 0에도 1프레임 렌더
+- 같은 목소리(Minho 1.15배)에서 55~58초를 채우려면 낭독 대본 약 480자 필요 (EP08 488자, EP12 483자)

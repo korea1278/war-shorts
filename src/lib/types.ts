@@ -103,11 +103,13 @@ export type Episode = {
   id: string;
   title: [string, string];
   script: {t: string; say?: string; phase2?: boolean; subs?: string[]}[];
-  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval';
+  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval' | 'slbm';
   layout?: 'safe'; // EP04~: 모바일 Safe Area 규격 (상단 120~350·자막 1550~1720·우측 150px 마진)
   result?: ResultData; // 있으면 끝 4초 결과 카드 + 스탯 페이드아웃 + 지도 80% 딤
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
   disclaimer?: string; // 자막 아래 작은 안내 문구 (기본: 가상 시나리오 안내)
+  subtitleBottomY?: number; // EP12~: 자막 박스 바닥 Y (예 1478 = bottom 23%), 아래 20%는 비움
+  ctaBottomY?: number; // EP12~: CTA 뱃지 바닥 Y (자막 위로 올림)
   highlight?: string[]; // 자막 노랑 강조 단어 (숫자는 자동)
   highlightColor?: string; // 강조 노랑 색 (EP07: #FFE500, 기본 #FFD000)
   warn?: string[]; // 자막 경고 레드(#FF3B30) 단어 (EP07~)
