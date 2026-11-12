@@ -89,6 +89,9 @@ const loadAssets = (dayNames: string[], nightName: string): Promise<Assets> => {
   return assetsPromise;
 };
 
+// 음수에도 안전한 나머지 (t < 시작 시각일 때 반경이 음수가 되던 문제 방지)
+const pmod = (a: number, m: number) => ((a % m) + m) % m;
+
 // ── 결정론 재료 (모듈 로드 때 1번) ──
 const gauss = (i: number) => {
   // Box-Muller (시드 고정)
@@ -633,16 +636,16 @@ export const BlackoutStage: React.FC<{p: BlackoutPlan; d: BlackoutData; dayLayer
       const sc = Math.min(2.2, Math.max(0.6, zs / 1.6));
       SUBSTATIONS.forEach((s, i) => {
         const period = 0.55 + rand(i + 61) * 0.5;
-        const ph = ((t - p.land + rand(i + 5) * period) % period) / period;
+        const ph = pmod(t - p.land + rand(i + 5) * period, period) / period;
         const on = ph < 0.35 ? 1 - ph / 0.35 : 0;
         const fade = 1 - clamp01((t - p.waveEnd) / 1.2);
         if (on <= 0) return;
         const [x, y] = pp(s);
         drawSprite(ctx, assets.blue, x, y, 34 * sc * (0.6 + on), on * fade);
-        const seed = i * 131 + Math.floor((t - p.land) / period);
+        const seed = i * 131 + Math.floor(Math.max(0, t - p.land) / period);
         for (let k = 0; k < 3; k++) arc(ctx, x, y, (18 + rand(seed + k) * 26) * sc, seed * 3 + k, on * fade);
         ctx.beginPath();
-        ctx.arc(x, y, (10 + 40 * (1 - on)) * sc, 0, Math.PI * 2);
+        ctx.arc(x, y, Math.max(0.5, (10 + 40 * (1 - on)) * sc), 0, Math.PI * 2);
         glow(ctx, BLUE, 1.6, '#ffffff', on * 0.8 * fade);
       });
       // 수천 곳: 불빛 점 위에서 시간차 스파크 (평양에서 바깥으로 번짐)
@@ -654,7 +657,7 @@ export const BlackoutStage: React.FC<{p: BlackoutPlan; d: BlackoutData; dayLayer
           if (L.km > spreadKm) continue;
           if (W >= 0 && L.km < W - 20) continue; // 이미 꺼진 곳
           const period = 0.9 + rand(i + 3000) * 1.4;
-          const ph = ((t + rand(i + 4000) * period) % period) / period;
+          const ph = pmod(t + rand(i + 4000) * period, period) / period;
           if (ph > 0.18) continue;
           const on = 1 - ph / 0.18;
           const [x, y] = pp(L.pos);
