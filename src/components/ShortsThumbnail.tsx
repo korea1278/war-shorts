@@ -23,6 +23,9 @@ export type ThumbCopy = {
   line1: string; // 메인 1줄 (화이트)
   line2: string; // 메인 2줄 (옐로)
   hook: string; // 중앙 하단 훅
+  scene?: 'slbm' | 'blackout'; // 배경 장면 (기본 slbm = EP12)
+  size1?: number; // 메인 1줄 크기 (기본 115)
+  size2?: number; // 메인 2줄 크기 (기본 125)
 };
 
 export const EP12_THUMB: ThumbCopy = {
@@ -30,6 +33,16 @@ export const EP12_THUMB: ThumbCopy = {
   line1: '바닷속 3,000톤',
   line2: '평양이 가장 떠는 괴물',
   hook: '세계 8번째 수중 발사의 진실',
+};
+
+export const EP13_THUMB: ThumbCopy = {
+  label: '[ 비살상 초토화 병기 ]',
+  line1: '피 한 방울 없이',
+  line2: '평양을 암흑으로 만든 폭탄',
+  hook: '전원 코드를 뽑아버리는 정전폭탄',
+  scene: 'blackout',
+  size1: 115,
+  size2: 120,
 };
 
 const W = 1080;
@@ -330,12 +343,115 @@ const Scene: React.FC = () => {
   );
 };
 
+/** EP13 배경: 평양 야경 — 왼쪽은 불빛, 오른쪽은 암전 + 은백색 탄소섬유 거미줄 + 푸른 합선 아크 + F-15K (SVG, 필터 없음) */
+const BlackoutScene: React.FC = () => {
+  const CX = 470;
+  const CY = 1010;
+  // 도시 불빛 (격자형 시가지)
+  const lights = Array.from({length: 520}, (_, i) => {
+    const a = rand(i + 11) * Math.PI * 2;
+    const d = Math.pow(rand(i + 23), 0.6) * 430;
+    const x = CX + Math.cos(a) * d * 1.25;
+    const y = CY + Math.sin(a) * d * 0.55;
+    return {x, y, r: 1.5 + rand(i + 37) * 4.5, o: 0.4 + rand(i + 41) * 0.6};
+  });
+  // 정전 경계선 (대각선): 경계 오른쪽은 꺼짐
+  const lit = (x: number, y: number) => x + (y - CY) * 0.9 < CX + 40;
+  const fibers = Array.from({length: 70}, (_, i) => {
+    const x = 120 + rand(i + 500) * 820;
+    const y = 700 + rand(i + 600) * 520;
+    const l = 60 + rand(i + 700) * 140;
+    const a = rand(i + 800) * Math.PI;
+    return `M${x},${y} q${Math.cos(a) * l * 0.5},${30 + rand(i) * 40} ${Math.cos(a) * l},${Math.sin(a) * l * 0.5}`;
+  });
+  const arcs = [
+    [560, 930], [700, 1040], [430, 1120], [820, 960], [640, 1180],
+  ].map(([x, y], k) => {
+    let d = `M${x},${y}`;
+    let cx = x;
+    let cy = y;
+    for (let i = 0; i < 7; i++) {
+      cx += (rand(k * 31 + i) - 0.5) * 70;
+      cy += -22 + (rand(k * 17 + i) - 0.5) * 30;
+      d += ` L${cx.toFixed(0)},${cy.toFixed(0)}`;
+    }
+    return {d, x, y};
+  });
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', inset: 0}}>
+      <defs>
+        <linearGradient id="bsky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#000207" />
+          <stop offset="0.5" stopColor="#030a18" />
+          <stop offset="1" stopColor="#01030a" />
+        </linearGradient>
+        <radialGradient id="bglow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#FFC46B" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#FFC46B" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="bblue" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
+          <stop offset="0.25" stopColor="#00E5FF" stopOpacity="0.7" />
+          <stop offset="1" stopColor="#00E5FF" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width={W} height={H} fill="url(#bsky)" />
+      {/* 지평선 + 시가지 바닥 */}
+      <path d={`M0,780 C300,760 760,760 ${W},790 L${W},${H} L0,${H} Z`} fill="#040810" />
+      {/* 왼쪽 불빛 번짐 */}
+      <ellipse cx={CX - 120} cy={CY} rx={420} ry={220} fill="url(#bglow)" />
+      {lights.map((l, i) =>
+        lit(l.x, l.y) ? (
+          <circle key={i} cx={l.x} cy={l.y} r={l.r} fill={rand(i + 3) > 0.3 ? '#FFD38A' : '#FFF4D8'} opacity={l.o} />
+        ) : (
+          <circle key={i} cx={l.x} cy={l.y} r={l.r * 0.7} fill="#1b2433" opacity={0.6} />
+        ),
+      )}
+      {/* 정전 파동 경계 */}
+      <path d={`M${CX + 40 + 330},${CY - 300} L${CX + 40 - 330},${CY + 300}`} stroke="#00E5FF" strokeWidth={22} opacity={0.15} />
+      <path d={`M${CX + 40 + 330},${CY - 300} L${CX + 40 - 330},${CY + 300}`} stroke="#00E5FF" strokeWidth={8} opacity={0.4} />
+      <path d={`M${CX + 40 + 330},${CY - 300} L${CX + 40 - 330},${CY + 300}`} stroke="#E8FDFF" strokeWidth={3} />
+      {/* 송전탑 실루엣 */}
+      {[180, 760].map((x, k) => (
+        <g key={k} transform={`translate(${x},${k ? 1040 : 1000}) scale(${k ? 1.25 : 1})`} stroke={k ? '#5a6b80' : '#c9a86a'} strokeWidth={4} fill="none">
+          <path d="M-40,160 L0,-140 L40,160 M-28,70 L28,70 M-18,0 L18,0 M-60,-90 L60,-90 M-46,-40 L46,-40 M-28,70 L18,0 M28,70 L-18,0" />
+        </g>
+      ))}
+      {/* 송전선 */}
+      <path d="M120,910 C350,960 560,960 700,960 S960,940 1080,930" stroke="#8796a8" strokeWidth={3} fill="none" opacity={0.8} />
+      <path d="M120,960 C350,1010 560,1010 700,1010 S960,990 1080,980" stroke="#8796a8" strokeWidth={3} fill="none" opacity={0.8} />
+      {/* 탄소섬유 거미줄 */}
+      {fibers.map((d, i) => (
+        <path key={i} d={d} stroke="#E6EEF7" strokeWidth={1.6} fill="none" opacity={0.55} />
+      ))}
+      {/* 푸른 합선 아크 */}
+      {arcs.map((a, i) => (
+        <g key={i}>
+          <circle cx={a.x} cy={a.y} r={90} fill="url(#bblue)" />
+          <path d={a.d} stroke="#00E5FF" strokeWidth={16} opacity={0.18} fill="none" strokeLinejoin="round" />
+          <path d={a.d} stroke="#00E5FF" strokeWidth={7} opacity={0.5} fill="none" strokeLinejoin="round" />
+          <path d={a.d} stroke="#F0FEFF" strokeWidth={3} fill="none" strokeLinejoin="round" />
+        </g>
+      ))}
+      {/* F-15K 실루엣 (상공) + 투하 자탄 */}
+      <g transform="translate(640,720) rotate(-18) scale(3.2)">
+        <path d="M30,0 L14,-3 L2,-4 L-6,-20 L-12,-20 L-10,-5 L-20,-6 L-26,-13 L-30,-13 L-28,-3 L-30,0 L-28,3 L-30,13 L-26,13 L-20,6 L-10,5 L-12,20 L-6,20 L2,4 L14,3 Z" fill="#0b1220" stroke="#9fdcff" strokeWidth={0.9} />
+      </g>
+      {Array.from({length: 26}, (_, i) => (
+        <rect key={i} x={560 + (rand(i + 1200) - 0.5) * 360} y={770 + rand(i + 1300) * 120} width={7} height={7} fill="#f2f6fa" opacity={0.9} />
+      ))}
+      {/* 하단 비네팅 */}
+      <rect x="0" y={H - 520} width={W} height={520} fill="#000" opacity={0.4} />
+    </svg>
+  );
+};
+
 export const ShortsThumbnail: React.FC<{copy?: ThumbCopy}> = ({copy = EP12_THUMB}) => {
   usePretendard();
   return (
     <AbsoluteFill style={{background: '#01030a', fontFamily: 'Pretendard, sans-serif', overflow: 'hidden'}}>
       <style>{fontCss()}</style>
-      <Scene />
+      {copy.scene === 'blackout' ? <BlackoutScene /> : <Scene />}
 
       {/* ── 상단 헤드카피 (Y 288~672) ── */}
       <div style={{position: 'absolute', left: SAFE_L, top: 270, width: SAFE_W}}>
@@ -371,9 +487,9 @@ export const ShortsThumbnail: React.FC<{copy?: ThumbCopy}> = ({copy = EP12_THUMB
           </span>
         </div>
         <div style={{position: 'relative'}}>
-          <FitLine text={copy.line1} size={115} color="#FFFFFF" />
+          <FitLine text={copy.line1} size={copy.size1 ?? 115} color="#FFFFFF" />
           <div style={{height: 8}} />
-          <FitLine text={copy.line2} size={125} color={YELLOW} />
+          <FitLine text={copy.line2} size={copy.size2 ?? 125} color={YELLOW} />
         </div>
       </div>
 

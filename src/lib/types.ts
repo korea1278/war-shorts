@@ -103,7 +103,7 @@ export type Episode = {
   id: string;
   title: [string, string];
   script: {t: string; say?: string; phase2?: boolean; subs?: string[]}[];
-  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval' | 'slbm';
+  scenario?: 'artillery' | 'armor' | 'missile' | 'air' | 'naval' | 'slbm' | 'blackout';
   layout?: 'safe'; // EP04~: 모바일 Safe Area 규격 (상단 120~350·자막 1550~1720·우측 150px 마진)
   result?: ResultData; // 있으면 끝 4초 결과 카드 + 스탯 페이드아웃 + 지도 80% 딤
   cta?: boolean; // 끝 4초 구독·좋아요 뱃지 (기본 켜짐, false면 끔)
@@ -114,6 +114,8 @@ export type Episode = {
   highlight?: string[]; // 자막 노랑 강조 단어 (숫자는 자동)
   highlightColor?: string; // 강조 노랑 색 (EP07: #FFE500, 기본 #FFD000)
   warn?: string[]; // 자막 경고 레드(#FF3B30) 단어 (EP07~)
+  blue?: string[]; // EP13~: 자막 일렉트릭 블루 강조 단어
+  blueColor?: string; // 기본 #00E5FF
   stats: {phase1: Stat[]; phase2: Stat[]; vs?: boolean; vsPhase2?: boolean};
   map: {
     mosaics?: string[]; // 추가 상세 위성 모자이크 이름 (pipeline/tiles.py)

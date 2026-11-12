@@ -85,3 +85,9 @@ npx remotion still src/index.ts Short out/x.png --frame=300 \
 - 자막 위치 옵션 `subtitleBottomY`(EP12: 1478 = bottom 23%, 박스가 위로 자람, 최하단 20%는 비움) · CTA 위치 `ctaBottomY`(EP12: 1360)
 - 썸네일: `src/components/ShortsThumbnail.tsx` → Still `shorts-thumbnail` → `public/thumbnails/shorts_epNN.png` (Artifacts에 같이 첨부), 영상 Frame 0에도 1프레임 렌더
 - 같은 목소리(Minho 1.15배)에서 55~58초를 채우려면 낭독 대본 약 480자 필요 (EP08 488자, EP12 483자)
+
+## 탄소섬유탄 정전 타격 (EP13~, `"scenario": "blackout"`, 컴포지션 `ep13-blackout` · 1080x1920)
+- `src/ep13/`: `plan.ts`(scene `intro/kosovo/korea/drop/spark/flash/blackout/dark/cta` + 큐 `blackout.releaseCue/burstCue/webCue/landCue/massCue/waveCue/outCue/commsCue`, 카메라 `blackoutCam`, 도시·송전망·변전소 근사 좌표), `BlackoutStage.tsx`(Y 384~1440 Canvas 2D: 어둡게 한 위성 지형 + NASA Black Marble 가산 합성 → F-15K 궤적·투하 → 자탄 180개 낙하산 확산 → 은백색 섬유 거미줄 → 변전소 푸른 합선 아크·수천 곳 스파크·연쇄 섬광 → 평양발 정전 파동(북한 국경 clip 안만 암전) → 통신 두절 X·블랙아웃 칩. 남한 불빛은 합성 점으로 항상 켜 둠), `Hud.tsx`(상단 모서리 반투명 Tactical HUD: 좌표·투하 고도·상태 / 회전 타깃 링·북한 전력 % 게이지), `sfx.ts`
+- 지도 재료: `map.mosaics`(주간 지형, 어둡게) + `map.night`(야간 모자이크 이름). EP13은 `peninsula`(z8)·`pyongyang`(z12)·`peninsula_night`
+- 자막 일렉트릭 블루 강조: `episode.blue` 단어 목록 + `blueColor`(기본 #00E5FF) — `Subtitles.tsx`
+- 썸네일: `ThumbCopy.scene: 'blackout'`(평양 야경 반쪽 암전·섬유·합선 아크·F-15K) + `size1/size2`, Still `shorts-thumbnail-ep13` → `public/thumbnails/shorts_ep13.png`

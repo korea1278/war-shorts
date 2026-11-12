@@ -5,20 +5,22 @@ import {COLORS, Episode, Timeline} from '../lib/types';
 // 숫자·핵심 무기명은 노란색 강조 (단어 목록은 episode.json highlight)
 const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // EP07~: warn 단어는 경고 레드(#FF3B30), highlightColor로 강조 노랑 색 지정(기본 #FFD000)
-const makeHL = (words: string[], warn: string[]) =>
-  new RegExp(`(${[...warn.map(esc), ...words.map(esc), '[A-Z]?-?\\d[\\d,.]*[^\\s,.?]*'].join('|')})`, 'g');
+// EP13~: blue 단어는 일렉트릭 블루(blueColor, 기본 #00E5FF)
+const makeHL = (words: string[], warn: string[], blue: string[] = []) =>
+  new RegExp(`(${[...warn.map(esc), ...blue.map(esc), ...words.map(esc), '[A-Z]?-?\\d[\\d,.]*[^\\s,.?]*'].join('|')})`, 'g');
 
-const renderText = (text: string, HL: RegExp, warn: string[], yellow: string) => {
+const renderText = (text: string, HL: RegExp, warn: string[], yellow: string, blue: string[] = [], blueColor = '#00E5FF') => {
   const parts = text.split(HL);
   return parts.map((p, i) =>
-    i % 2 === 1 ? <span key={i} style={{color: warn.includes(p) ? '#FF3B30' : yellow}}>{p}</span> : <span key={i}>{p}</span>,
+    i % 2 === 1 ? <span key={i} style={{color: warn.includes(p) ? '#FF3B30' : blue.includes(p) ? blueColor : yellow}}>{p}</span> : <span key={i}>{p}</span>,
   );
 };
 
 export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({timeline, episode}) => {
   const warn = episode.warn ?? [];
   const yellow = episode.highlightColor ?? COLORS.yellow;
-  const HL = makeHL(episode.highlight ?? ['K9', '천무', '장사정포', '대포병 탐지레이더'], warn);
+  const blue = episode.blue ?? [];
+  const HL = makeHL(episode.highlight ?? ['K9', '천무', '장사정포', '대포병 탐지레이더'], warn, blue);
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const sec = frame / fps;
@@ -57,7 +59,7 @@ export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({tim
               fontSize: fs, lineHeight: 1.12, fontWeight: 900, color: '#fff', textAlign: 'center',
               wordBreak: 'keep-all', whiteSpace: 'pre-wrap', WebkitTextStroke: '10px #000', paintOrder: 'stroke fill',
             }}>
-              {renderText(c.text, HL, warn, yellow)}
+              {renderText(c.text, HL, warn, yellow, blue, episode.blueColor)}
             </div>
           </div>
         )}
@@ -85,7 +87,7 @@ export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({tim
               fontSize: fs, lineHeight: two ? 1.1 : 1.15, fontWeight: 900, color: '#fff', textAlign: 'center',
               wordBreak: 'keep-all', whiteSpace: 'pre-wrap', WebkitTextStroke: '10px #000', paintOrder: 'stroke fill',
             }}>
-              {renderText(c.text, HL, warn, yellow)}
+              {renderText(c.text, HL, warn, yellow, blue, episode.blueColor)}
             </div>
           </div>
         )}
@@ -107,7 +109,7 @@ export const Subtitles: React.FC<{timeline: Timeline; episode: Episode}> = ({tim
               fontSize: 84, lineHeight: 1.22, fontWeight: 900, color: '#fff', textAlign: 'center',
               wordBreak: 'keep-all', whiteSpace: 'pre-wrap', WebkitTextStroke: '12px #000', paintOrder: 'stroke fill',
             }}>
-              {renderText(c.text, HL, warn, yellow)}
+              {renderText(c.text, HL, warn, yellow, blue, episode.blueColor)}
             </div>
           </div>
         );

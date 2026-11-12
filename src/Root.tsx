@@ -1,6 +1,8 @@
 import React from 'react';
 import {CalculateMetadataFunction, Composition, Still, staticFile} from 'remotion';
-import {EP12_THUMB, ShortsThumbnail} from './components/ShortsThumbnail';
+import {EP12_THUMB, EP13_THUMB, ShortsThumbnail} from './components/ShortsThumbnail';
+import {BlackoutProps, BlackoutShort} from './ep13/BlackoutShort';
+import {BlackoutEpisode} from './ep13/plan';
 import {SlbmProps, SlbmShort} from './ep12/SlbmShort';
 import {SlbmEpisode} from './ep12/plan';
 import {DEFAULT_SEC, FPS, videoSec} from './lib/schedule';
@@ -53,6 +55,15 @@ const calcSlbm: CalculateMetadataFunction<SlbmProps> = async ({props}) => {
   return {props: {...props, episode, timeline, geo}, durationInFrames: Math.round(videoSec(timeline) * FPS)};
 };
 
+// EP13 탄소섬유탄 정전 타격 (1080x1920): 에피소드·타임라인 (지도 재료는 컴포넌트가 직접 로드)
+const calcBlackout: CalculateMetadataFunction<BlackoutProps> = async ({props}) => {
+  const [episode, timeline] = await Promise.all([
+    fetch(staticFile(`ep/${props.ep}/episode.json`)).then((r) => r.json() as Promise<BlackoutEpisode>),
+    fetch(staticFile(`ep/${props.ep}/timeline.json`)).then((r) => r.json() as Promise<Timeline>),
+  ]);
+  return {props: {...props, episode, timeline}, durationInFrames: Math.round(videoSec(timeline) * FPS)};
+};
+
 export const Root: React.FC = () => (
   <>
     <Composition
@@ -98,7 +109,19 @@ export const Root: React.FC = () => (
       defaultProps={{ep: 'ep12-slbm'} as SlbmProps}
       calculateMetadata={calcSlbm}
     />
+    {/* EP13 북한 전력망 탄소섬유탄(정전폭탄): 1080x1920 · 30fps · 길이 = 나레이션 + 1.5초 · Frame 0 썸네일 */}
+    <Composition
+      id="ep13-blackout"
+      component={BlackoutShort}
+      width={1080}
+      height={1920}
+      fps={FPS}
+      durationInFrames={57 * FPS}
+      defaultProps={{ep: 'ep13-blackout'} as BlackoutProps}
+      calculateMetadata={calcBlackout}
+    />
     {/* 쇼츠 썸네일 (EP12~): 1080x1920 단일 프레임 → public/thumbnails/shorts_epNN.png */}
     <Still id="shorts-thumbnail" component={ShortsThumbnail} width={1080} height={1920} defaultProps={{copy: EP12_THUMB}} />
+    <Still id="shorts-thumbnail-ep13" component={ShortsThumbnail} width={1080} height={1920} defaultProps={{copy: EP13_THUMB}} />
   </>
 );
